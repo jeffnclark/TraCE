@@ -34,14 +34,17 @@ may be a neat solution whereby the resulting score would mean:
 ### Counterfactuals
 5. Train classifier
 6. Compute counterfactuals
-ß
+
 ### Compute metrics
 7. Cosine similarity
-8. L2
-9. Product
+8. L2?
+9. Potentially: Cosine similarity for negative outcomes i.e. where we really don't want to end up
+9. Some combination of the above eg:
+    - Product of cosine similarity and L2
+    - cosine simalarity to positive counteractual - cosine similarity to "negative" counterfactual (where we don't want to end up)
 
 ### Plot metrics
-10. Over steps for one person
+10. Over steps for one timeseries
 11. Comparing groups of patients for known outcomes: ie those that were successfully discharged and those that died (the latter are currently not in Chris’ dataset)
 
 ### Write paper
