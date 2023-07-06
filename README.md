@@ -16,11 +16,11 @@ further deteriorating.
 tant. A potential scoring metrics could utilise existing methods, such as:
     - L2 distance for magnitude
     - Cosine similarity for direction, which is already handily scaled to -1 to 1
-- Taking the product, or combining these two components in another fashion, into a single metric
+- Using the cosine similarity, or combined with L2 distance or other values, into a single metric
 may be a neat solution whereby the resulting score would mean:
     - Large positive: strong progress towards boundary and opposite class, i.e. improvement
     - Near 0: making no progress, potentially moving parallel to decision boundary
-    - Large negative: clearly moving in wron
+    - Large negative: clearly moving in wrong direction
 
 --- 
 ## Required work
