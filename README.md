@@ -1,4 +1,4 @@
-# TRACE: Trajectory Counterfactual Scores
+# TraCE: Trajectory Counterfactual Scores
 ## Idea
 
 - Counterfactual explanations, and their paths, can provide a useful indication of what should
