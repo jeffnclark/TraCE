@@ -74,7 +74,7 @@ def news(x):
     x_prime[3] = 37.05 # temperature
     x_prime[4] = 165 # blood pressure
     x_prime[5] = 70.5 # heart rate
-    x_prime[6] = 1
+    x_prime[6] = 0 # consciousness
 
     # calculate respiratory score
     if x[0] <= x_prime[0]:
@@ -92,7 +92,7 @@ def news(x):
         x_star[0] = 25
     if x[0] >= 25:
         score += 1
-        x_star[0] = x[0] + 1
+        x_star[0] = x[0]
 
     # calculate oxygen saturation score
     if x[1] >= 96:
@@ -105,7 +105,7 @@ def news(x):
         x_star[1] = 91
     if x[1] <= 91:
         score += 1
-        x_star[1] = x[1] - 1
+        x_star[1] = x[1]
 
     # calculate supplemental oxygen score (1 on supplementary oxygen, 0 not)
     x_star[2] = 1
@@ -128,7 +128,7 @@ def news(x):
         x_star[3] = 39.1
     if x[3] >= 39.1:
         score += 1
-        x_star[3] = x[3] + 1
+        x_star[3] = x[3]
 
     # calculate blood pressure score
     if x[4] <= x_prime[4]:
@@ -143,10 +143,10 @@ def news(x):
         x_star[4] = 90
     if x[4] <= 90:
         score += 1
-        x_star[4] = x[4] - 1
+        x_star[4] = x[4]
     if x[4] >= 220:
         score += 3
-        x_star[4] = x[4] - 1
+        x_star[4] = x[4]
 
     # calculate heart rate score
     if x[5] <= x_prime[5]:
@@ -158,7 +158,7 @@ def news(x):
         x_star[5] = 40
     if x[5] <= 40:
         score += 1
-        x_star[5] = x[5] - 1
+        x_star[5] = x[5]
     if x[5] >= 91:
         score += 1
         x_star[5] = 111
@@ -167,7 +167,7 @@ def news(x):
         x_star[5] = 131
     if x[5] >= 131:
         score += 1
-        x_star[5] = x[0] + 1
+        x_star[5] = x[0]
 
     # calculate level of consciousness score (1 unconscious, 0 conscious)
     x_star[6] = 1
