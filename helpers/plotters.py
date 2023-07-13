@@ -14,9 +14,10 @@ def plot_dataset(ax, df, size=20):
     Returns:
         axis with the data plotted
     """
-    dots_color_mapping = mpl.colors.ListedColormap(["#0000FF", "#87CEEB", "#3EB489"])
+    dots_color_mapping = mpl.colors.ListedColormap(
+        ["#0000FF", "#87CEEB", "#3EB489"])
 
-    ax.scatter(df.x1, df.x2, c=df.y,
+    ax.scatter(df.iloc[:, 0], df.iloc[:, 1], c=df.y,
                cmap=dots_color_mapping, s=size,
                #    edgecolors = 'black',
                zorder=10)
@@ -132,7 +133,8 @@ def plot_graph(ax, data, model, steps, G, shortest):
         for j in edges:
             w = G[i][j[1]]["weight"]
             ax.plot([steps[i, 0], steps[j[1], 0]],
-                    [steps[i, 1], steps[j[1], 1]], 'ko', linestyle="--", linewidth = 0.1, alpha=0.25)
+                    [steps[i, 1], steps[j[1], 1]], 'ko', linestyle="--", linewidth=0.1, alpha=0.25)
 
-    ax.plot(steps[shortest, 0], steps[shortest, 1], '-g', label='Enhance', linewidth=3, alpha=1)
+    ax.plot(steps[shortest, 0], steps[shortest, 1],
+            '-g', label='Enhance', linewidth=3, alpha=1)
     return ax
