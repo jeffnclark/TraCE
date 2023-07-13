@@ -20,7 +20,7 @@ model1 = MLPClassifier(hidden_layer_sizes=(10, 10), random_state=1, max_iter=700
 X1 = data1[["x1", "x2"]]
 
 # create data set and model for scenario 2
-data2 = generator(samples, seed, noise, centre=(1.3, 0.6))  # generate data
+data2 = generator(samples, seed, noise, centre=(1, 0.6))  # generate data
 x2 = data2.iloc[:, :2]  # ensure data is 2d
 y2 = data2.y
 
@@ -39,8 +39,8 @@ cf1 = np.array([[[0.4, 0.6],
                 ])
 cf2 = np.array([[[0.545, 0.555],
                  [0.575, 0.55]],
-                [[0.625, 0.3],
-                 [0.615, 0.4]]
+                [[0.625, 0.45],
+                 [0.58, 0.5]]
                 ])
 
 test_x0 = np.array([0, 0])
@@ -92,4 +92,3 @@ for j, ax in enumerate(ax):
 
 plt.savefig('TraCE/plots/figure_1.pdf', format='pdf')
 plt.show()
-print('stop')
