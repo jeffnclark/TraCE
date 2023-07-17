@@ -62,10 +62,10 @@ score3, prime3, star3 = news(x3)
 score4, prime4, star4 = news(x4)
 
 # normalise everything and get TraCE scores
-R1 = np.round(score(x0, x1, prime0, star0), 2)
-R2 = np.round(score(x1, x2, prime1, star1), 2)
-R3 = np.round(score(x2, x3, prime2, star2), 2)
-R4 = np.round(score(x3, x4, prime3, star3), 2)
+R1 = np.round(score(x0, x1, [prime0], [star0], method='avg'), 2)
+R2 = np.round(score(x1, x2, [prime1], [star1], method='avg'), 2)
+R3 = np.round(score(x2, x3, [prime2], [star2], method='avg'), 2)
+R4 = np.round(score(x3, x4, [prime3], [star3], method='avg'), 2)
 
 t = np.array([0, 1, 2, 3, 4])
 scores = np.array([score0, score1, score2, score3, score4])

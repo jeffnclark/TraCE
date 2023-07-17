@@ -1,5 +1,6 @@
 import numpy as np
-
+import scipy.interpolate
+from scipy.interpolate import griddata
 
 def vec(x1, x2):
     """
@@ -25,7 +26,7 @@ def cos_sim(v, u):
     return dot / (v_len * u_len)
 
 
-def score(x0, x1, x_prime, x_star=None):
+def score(x0, x1, x_prime, x_star=None, method='dot'):
     """
     return the score of the trajectory as a balance between where we want to go, where we
     don't want to go, and where we actually went
@@ -35,32 +36,54 @@ def score(x0, x1, x_prime, x_star=None):
     :param x_star: negative counterfactual
     :return: score
     """
-    if x_star is None:
+    if method == 'dot':
+        if x_star is None:
+            v = vec(x0, x1)
+            v_prime = vec(x0, x_prime)
+            S = cos_sim(v, v_prime)
+
+        else:
+            # get vectors
+            v = vec(x0, x1)
+            v_prime = vec(x0, x_prime)
+            v_star = vec(x0, x_star)
+
+            # get angle
+            theta = cos_sim(v_prime, v_star)
+
+            if theta == 1:
+                print('Counterfactuals aligned, cannot calculate score')
+                return np.nan
+
+            # scale score by maximum possible potential score
+            norm_v_prime = v_prime / np.linalg.norm(v_prime)
+            norm_v_star = v_star / np.linalg.norm(v_star)
+            norm_v = v / np.linalg.norm(v)
+            length = np.sqrt(2 - 2 * theta)
+            S = np.dot((norm_v_prime - norm_v_star) / length, norm_v)
+
+    if method == 'avg':
+        S = 0
         v = vec(x0, x1)
-        v_prime = vec(x0, x_prime)
-        score = cos_sim(v, v_prime)
-
-    else:
-        # get vectors
-        v = vec(x0, x1)
-        v_prime = vec(x0, x_prime)
-        v_star = vec(x0, x_star)
-
-        # get angle
-        theta = cos_sim(v_prime, v_star)
-
-        if theta == 1:
-            print('Counterfactuals aligned, cannot calculate score')
-            return np.nan
-
-        # scale score by maximum possible potential score
-        norm_v_prime = v_prime / np.linalg.norm(v_prime)
-        norm_v_star = v_star / np.linalg.norm(v_star)
         norm_v = v / np.linalg.norm(v)
-        length = np.sqrt(2 - 2 * theta)
-        score = np.dot((norm_v_prime - norm_v_star) / length, norm_v)
+        n = 0
+        for xp in x_prime:
+            v_prime = vec(x0, xp)
+            temp = np.dot(norm_v, v_prime / np.linalg.norm(v_prime))
+            S += temp
+            n += 1
+        for xs in x_star:
+            v_star = vec(x0, xs)
+            temp = np.dot(norm_v, v_star / np.linalg.norm(v_star))
+            S -= temp
+            n += 1
 
-    return score
+        S = S / n
+
+    if method == 'interp':
+
+
+    return S
 
 
 def news(x):
