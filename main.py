@@ -1,4 +1,6 @@
-import helpers.datasets as datasets
+import numpy as np
+
+import data.datasets as datasets
 from helpers.plotters import *
 from helpers.funcs import *
 from sklearn.neural_network import MLPClassifier
@@ -29,13 +31,13 @@ X2 = data2[["x1", "x2"]]
 
 # factual at t=0, t=1, t=2
 factual = np.array([[0.5, 0.1],
-                    [0.55, 0.25],
+                    [0.52, 0.25],
                     [0.45, 0.4]])
 
-cf1 = np.array([[[0.4, 0.6],
-                 [0.475, 0.65]],
-                [[0.4, 0.6],
-                 [0.475, 0.65]]
+cf1 = np.array([[[0.425, 0.5],
+                 [0.5, 0.54]],
+                [[0.425, 0.5],
+                 [0.5, 0.54]]
                 ])
 cf2 = np.array([[[0.545, 0.555],
                  [0.575, 0.55]],
@@ -44,11 +46,10 @@ cf2 = np.array([[[0.545, 0.555],
                 ])
 
 test_x0 = np.array([0, 0])
-test_x1 = np.array([1, 1])
-test_xprime = np.array([1, 0])
-test_xstar = np.array([-1, 0])
-
-test = score(test_x0, test_x1, test_xprime, test_xstar)
+test_x1 = np.array([0, 1])
+test_xprime = np.array([[1, 0], [-1, 1]])
+test_func = lambda a, b, c : (np.linalg.norm(a-c) - np.linalg.norm(b-c)) / np.sqrt(2)
+test = score(test_x0, test_x1, test_xprime[0], func=test_func)
 # scores
 scores = np.zeros((2, 2))
 for i in range(len(factual) - 1):
@@ -57,7 +58,11 @@ for i in range(len(factual) - 1):
     for j in range(cf1.shape[2]):
         x_prime = cf1[j, i, :]
         x_star = cf2[j, i, :]
-        scores[i, j] = score(xt, xt1, x_prime, x_star)
+        temp1 = score(xt, xt1, x_prime)
+        temp2 = score(xt, xt1, x_star)
+        scores[i, j] = 1/2*(temp1 - temp2)
+
+        #scores[i, j] = score(xt, xt1, [x_prime], [x_star], method='avg')
 
 # plotting
 fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18, 5), sharey=True)
@@ -78,7 +83,7 @@ for j, ax in enumerate(ax):
 
     for i in range(len(cf1[j])):
         ax.text(((factual[i, 0] + factual[i + 1, 0]) / 2) + 0.05, (factual[i, 1] + factual[i + 1, 1]) / 2,
-                r'$R_{} = {}$'.format(i, np.round(scores[i, j], 2)), va='center', ha='center',
+                r'$R_{} = {}$'.format(i, np.round(scores[i, j], 4)), va='center', ha='center',
                 rotation='horizontal', fontsize=16, color='black', alpha=.7, zorder=100)
         line1 = ax.annotate("", xy=(cf1[j, i, 0], cf1[j, i, 1]), xytext=(factual[i, 0], factual[i, 1]),
                             arrowprops=dict(arrowstyle="->", lw=1, color='green', alpha=.7))
@@ -90,5 +95,5 @@ for j, ax in enumerate(ax):
     ax.set_xlim([0.35, 0.7])
     ax.set_ylim([0, 0.7])
 
-plt.savefig('TraCE/plots/figure_1.pdf', format='pdf')
+plt.savefig('plots/figure_1.pdf', format='pdf')
 plt.show()
