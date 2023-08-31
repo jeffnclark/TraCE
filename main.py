@@ -9,6 +9,7 @@ from sklearn.neural_network import MLPClassifier
 samples = 300
 seed = 10
 noise = 0.2
+plot = True
 
 # define data generator
 generator = datasets.create_blobs  # get data generator
@@ -65,35 +66,53 @@ for i in range(len(factual) - 1):
         #scores[i, j] = score(xt, xt1, [x_prime], [x_star], method='avg')
 
 # plotting
-fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18, 5), sharey=True)
+if plot:
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18, 5), sharey=True)
 
-ax[0] = plot_dataset(ax[0], data1)
-ax[0] = plot_decision_boundary(ax[0], X1, model1)
+    ax[0] = plot_dataset(ax[0], data1)
+    ax[0] = plot_decision_boundary(ax[0], X1, model1)
 
-ax[1] = plot_dataset(ax[1], data2)
-ax[1] = plot_decision_boundary(ax[1], X2, model2)
+    ax[1] = plot_dataset(ax[1], data2)
+    ax[1] = plot_decision_boundary(ax[1], X2, model2)
 
-for j, ax in enumerate(ax):
-    ax.plot(factual[:, 0], factual[:, 1], 'ko-', label='true trajectory')
-    for i, fact in enumerate(factual):
-        ax.text(fact[0] + 0.02, fact[1], r'$x_{}$'.format(i), va='center', ha='center',
-                rotation='horizontal', fontsize=16, color='black', alpha=.7, zorder=100)
-    ax.plot(cf1[j, :, 0], cf1[j, :, 1], 'k*', markersize=12, markeredgecolor='white', label='positive counterfactual')
-    ax.plot(cf2[j, :, 0], cf2[j, :, 1], 'w*', markersize=12, markeredgecolor='black', label='negative counterfactual')
+    for j, ax in enumerate(ax):
+        ax.plot(factual[:, 0], factual[:, 1], 'ko-', label='true trajectory')
+        for i, fact in enumerate(factual):
+            ax.text(fact[0] + 0.02, fact[1], r'$x_{}$'.format(i), va='center', ha='center',
+                    rotation='horizontal', fontsize=16, color='black', alpha=.7, zorder=100)
+        ax.plot(cf1[j, :, 0], cf1[j, :, 1], 'k*', markersize=12, markeredgecolor='white', label='positive counterfactual')
+        ax.plot(cf2[j, :, 0], cf2[j, :, 1], 'w*', markersize=12, markeredgecolor='black', label='negative counterfactual')
 
-    for i in range(len(cf1[j])):
-        ax.text(((factual[i, 0] + factual[i + 1, 0]) / 2) + 0.05, (factual[i, 1] + factual[i + 1, 1]) / 2,
-                r'$R_{} = {}$'.format(i, np.round(scores[i, j], 4)), va='center', ha='center',
-                rotation='horizontal', fontsize=16, color='black', alpha=.7, zorder=100)
-        line1 = ax.annotate("", xy=(cf1[j, i, 0], cf1[j, i, 1]), xytext=(factual[i, 0], factual[i, 1]),
-                            arrowprops=dict(arrowstyle="->", lw=1, color='green', alpha=.7))
-        line2 = ax.annotate("", xy=(cf2[j, i, 0], cf2[j, i, 1]), xytext=(factual[i, 0], factual[i, 1]),
-                            arrowprops=dict(arrowstyle="->", lw=1, color='red', alpha=.7))
+        for i in range(len(cf1[j])):
+            ax.text(((factual[i, 0] + factual[i + 1, 0]) / 2) + 0.05, (factual[i, 1] + factual[i + 1, 1]) / 2,
+                    r'$R_{} = {}$'.format(i, np.round(scores[i, j], 4)), va='center', ha='center',
+                    rotation='horizontal', fontsize=16, color='black', alpha=.7, zorder=100)
+            line1 = ax.annotate("", xy=(cf1[j, i, 0], cf1[j, i, 1]), xytext=(factual[i, 0], factual[i, 1]),
+                                arrowprops=dict(arrowstyle="->", lw=1, color='green', alpha=.7))
+            line2 = ax.annotate("", xy=(cf2[j, i, 0], cf2[j, i, 1]), xytext=(factual[i, 0], factual[i, 1]),
+                                arrowprops=dict(arrowstyle="->", lw=1, color='red', alpha=.7))
 
-    if j == 0:
-        ax.legend(loc='lower right', fancybox=True, framealpha=0.2, prop={'size': 12})
-    ax.set_xlim([0.35, 0.7])
-    ax.set_ylim([0, 0.7])
+        if j == 0:
+            ax.legend(loc='lower right', fancybox=True, framealpha=0.2, prop={'size': 12})
+        ax.set_xlim([0.35, 0.7])
+        ax.set_ylim([0, 0.7])
 
-plt.savefig('plots/figure_1.pdf', format='pdf')
-plt.show()
+    plt.savefig('plots/figure_1.pdf', format='pdf')
+    plt.show()
+
+
+# generate cumulative average score
+scores = np.random.rand(20) # **** This replaces Ed's toy example scores, delete when running for case studies ****
+cumulative_average_score = cumulative_average_trace(scores)
+mean_trace = cumulative_average_score[-1]
+print(f'Mean TraCE Score: {mean_trace:.2f}')
+
+if plot:
+    plt.plot(scores, label='Instantaneous TraCE')
+    plt.plot(cumulative_average_score, label='Cumulative average TraCE')
+    plt.xlabel('Step')
+    plt.ylabel('TraCE score per step')
+    plt.title(f'Average TraCE: {mean_trace:.2f}')
+    plt.legend()
+    plt.savefig('plots/trace_plot.pdf', format='pdf')
+    plt.show()
