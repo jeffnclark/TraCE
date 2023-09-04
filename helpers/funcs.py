@@ -1,6 +1,6 @@
 import numpy as np
-import math
-from scipy.special import gamma
+from scipy.special import gamma, factorial
+import pandas as pd
 
 
 def vec(x1, x2):
@@ -143,20 +143,22 @@ def score1(x0, x1, x_prime, x_star=None, method='dot'):
         n = 0
         for xp in x_prime:
             v_prime = vec(x0, xp)
-            p_test1 = (np.dot(v, v_prime) / (np.linalg.norm(v_prime) * np.linalg.norm(v)))
+            p_test1 = (np.dot(v, v_prime) /
+                       (np.linalg.norm(v_prime) * np.linalg.norm(v)))
             p_test2 = (1 - np.exp(-np.linalg.norm(v)))
             p_test3 = (np.exp(-np.linalg.norm(x1 - xp)))
             temp = (np.dot(v, v_prime) / (np.linalg.norm(v_prime) * np.linalg.norm(v))) * (
-                    1 - np.exp(-np.linalg.norm(v))) * (np.exp(-np.linalg.norm(x1 - xp)))
+                1 - np.exp(-np.linalg.norm(v))) * (np.exp(-np.linalg.norm(x1 - xp)))
             S += temp
             n += 1
         for xs in x_star:
             v_star = vec(x0, xs)
-            s_test1 = (np.dot(v, v_star) / (np.linalg.norm(v_star) * np.linalg.norm(v)))
+            s_test1 = (np.dot(v, v_star) /
+                       (np.linalg.norm(v_star) * np.linalg.norm(v)))
             s_test2 = (1 - np.exp(-np.linalg.norm(v)))
             s_test3 = (np.exp(-np.linalg.norm(x1 - xs)))
             temp = (np.dot(v, v_star) / (np.linalg.norm(v_star) * np.linalg.norm(v))) * (
-                    1 - np.exp(-np.linalg.norm(v))) * (np.exp(-np.linalg.norm(x1 - xs)))
+                1 - np.exp(-np.linalg.norm(v))) * (np.exp(-np.linalg.norm(x1 - xs)))
             S -= temp
             n += 1
 
@@ -298,3 +300,13 @@ def news(x):
         score += 3
 
     return score, x_prime, x_star
+
+
+def cumulative_average_trace(scores):
+    '''
+    Calculate cumulative average TraCE score
+    The final value is an average of the entire trajectory
+
+    '''
+    df = pd.DataFrame(scores, columns=['score'])
+    return df['score'].expanding().mean().to_numpy()
