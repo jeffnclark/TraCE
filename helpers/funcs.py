@@ -62,7 +62,7 @@ def score(x0, x1, x_prime, func=None):
         psi = np.dot(v_best, v_prime1) / (length(v_best) * length(v_prime1))
 
     if func is None:
-        lam = 0.5
+        lam = np.exp(-(length(v_prime1 - v_prime0)))
     else:
         lam = func(length(v_prime1 - v_prime0))
 

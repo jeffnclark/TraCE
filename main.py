@@ -61,8 +61,8 @@ for i in range(len(factual) - 1):
     for j in range(cf1.shape[2]):
         x_prime = cf1[j, i, :]
         x_star = cf2[j, i, :]
-        temp1 = score(xt, xt1, x_prime, func=test_func1)
-        temp2 = score(xt, xt1, x_star, func=test_func1)
+        temp1 = score(xt, xt1, x_prime) #, func=test_func1)
+        temp2 = score(xt, xt1, x_star) #, func=test_func1)
         scores[i, j] = 1 / 2 * (temp1 - temp2)
 
         # scores[i, j] = score(xt, xt1, [x_prime], [x_star], method='avg')
