@@ -41,15 +41,17 @@ cf1 = np.array([[[0.425, 0.5],
                 ])
 cf2 = np.array([[[0.545, 0.555],
                  [0.575, 0.55]],
-                [[0.625, 0.45],
-                 [0.58, 0.5]]
+                [[0.6, 0.41],
+                 [0.56, 0.48]]
                 ])
 
 test_x0 = np.array([0, 0])
 test_x1 = np.array([0, 1])
 test_xprime = np.array([[1, 0], [-1, 1]])
-test_func = lambda a, b, c : (np.linalg.norm(a-c) - np.linalg.norm(b-c)) / np.sqrt(2)
-test = score(test_x0, test_x1, test_xprime[0], func=test_func)
+test_func1 = lambda a : 1 - a / np.sqrt(2)
+test_func2 = lambda a : np.exp(-a)
+test_func3 = lambda a : 0.5
+test = score(test_x0, test_x1, test_xprime[0], func=test_func3)
 # scores
 scores = np.zeros((2, 2))
 for i in range(len(factual) - 1):
@@ -58,8 +60,8 @@ for i in range(len(factual) - 1):
     for j in range(cf1.shape[2]):
         x_prime = cf1[j, i, :]
         x_star = cf2[j, i, :]
-        temp1 = score(xt, xt1, x_prime)
-        temp2 = score(xt, xt1, x_star)
+        temp1 = score(xt, xt1, x_prime, func=test_func1)
+        temp2 = score(xt, xt1, x_star, func=test_func1)
         scores[i, j] = 1/2*(temp1 - temp2)
 
         #scores[i, j] = score(xt, xt1, [x_prime], [x_star], method='avg')
@@ -92,7 +94,7 @@ for j, ax in enumerate(ax):
 
     if j == 0:
         ax.legend(loc='lower right', fancybox=True, framealpha=0.2, prop={'size': 12})
-    ax.set_xlim([0.35, 0.7])
+    ax.set_xlim([0, 0.7])
     ax.set_ylim([0, 0.7])
 
 plt.savefig('plots/figure_1.pdf', format='pdf')

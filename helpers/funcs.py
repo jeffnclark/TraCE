@@ -1,7 +1,6 @@
 import numpy as np
-import scipy.interpolate
-from scipy.interpolate import griddata
-from scipy.special import gamma, factorial
+import math
+from scipy.special import gamma
 
 
 def vec(x1, x2):
@@ -35,7 +34,40 @@ def n_sphere(v):
     return V
 
 
-def score(x0, x1, x_prime, func=None, weight=0.5):
+def score(x0, x1, x_prime, func=None):
+    """
+    return the score of the trajectory as a balance between where we want to go, where we
+    don't want to go, and where we actually went
+    :param x0: start point
+    :param x1: end point
+    :param x_prime: counterfactual
+    :return: score
+    """
+    v = vec(x0, x1)
+    v_prime0 = vec(x0, x_prime)
+    v_prime1 = vec(x1, x_prime)
+    length = np.linalg.norm
+
+    phi = np.dot(v_prime0, v) / (length(v_prime0) * length(v))
+
+    if phi == 1:
+        psi = length(v) / length(v_prime0)
+    elif phi <= 0:
+        v_best = v_prime0
+        psi = np.dot(v_best, v_prime1) / (length(v_best) * length(v_prime1))
+    else:
+        mag = np.sqrt(length(v_prime0) ** 2 - (length(v_prime0) * np.sqrt(1 - phi ** 2)) ** 2)
+        x_best = x0 + (v / length(v)) * mag
+        v_best = x_prime - x_best
+        psi = np.dot(v_best, v_prime1) / (length(v_best) * length(v_prime1))
+
+    lam = func(length(v_prime1 - v_prime0))
+    S = lam * phi + (1 - lam) * psi
+
+    return S
+
+
+def score2(x0, x1, x_prime, func=None, weight=0.5):
     """
     return the score of the trajectory as a balance between where we want to go, where we
     don't want to go, and where we actually went
