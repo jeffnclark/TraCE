@@ -330,19 +330,24 @@ def process_netcdf_data(data_subdirectory, output_subdirectory,
         if 'latitude' in dataset.coords and 'longitude' in dataset.coords:
             new_coords = {'latitude': 'lat', 'longitude': 'lon'}
             dataset = dataset.rename(new_coords)
-        
-        # Identify the variable code
-        variable_code = [variable_name for variable_name in dataset.data_vars 
-                 if set(dataset[variable_name].dims) == set(dataset.coords)][0]
      
         # For datasets with multiple atmospheric levels, select data for the highest level (corresponding to near-surface)
         if "lev" in dataset.dims:
             dataset = dataset.sel(lev=dataset["lev"].max().item())
             dataset = dataset.drop("lev")
 
+        # For surface datasets with a single height level, drop this coordinate
+        if "height" in dataset.coords:
+            if dataset["height"].values.shape == ():
+                dataset = dataset.drop("height")
+
         # Check if expver is a dimension in the xarray dataset and call the merge_exp_versions function
         if "expver" in list(dataset.dims):
             dataset = merge_exp_versions(dataset)        
+
+        # Identify the variable code
+        variable_code = [variable_name for variable_name in dataset.data_vars 
+                         if set(dataset[variable_name].dims) == set(dataset.coords)][0]
         
         # Call the aggregate_country_data function
         aggregated_dataset = aggregate_country_data(dataset, country_shapes)
