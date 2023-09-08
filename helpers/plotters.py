@@ -15,7 +15,7 @@ def plot_dataset(ax, df, size=20):
         axis with the data plotted
     """
     dots_color_mapping = mpl.colors.ListedColormap(
-        ["#0000FF", "#87CEEB", "#3EB489"])
+        ["#FF0000", "#FFFF00", "#0000FF"])#0000FF
 
     ax.scatter(df.iloc[:, 0], df.iloc[:, 1], c=df.y,
                cmap=dots_color_mapping, s=size,
@@ -31,7 +31,7 @@ def plot_dataset(ax, df, size=20):
     return ax
 
 
-def plot_decision_boundary(ax, X_scaled, predictor, color_bar=False, levels=20, alpha=0.8):
+def plot_decision_boundary(ax, X_scaled, predictor, color_bar=False, levels=50, alpha=0.8):
     h = 0.01
     x1_min, x2_min = np.min(X_scaled, axis=0)
     x1_max, x2_max = np.max(X_scaled, axis=0)
@@ -49,11 +49,12 @@ def plot_decision_boundary(ax, X_scaled, predictor, color_bar=False, levels=20, 
         for i, prob in enumerate(probs):
             max = np.argmax(prob)
             if max == 0:
-                values[i] = 1 / 3 * prob[max]
+                values[i] = 1/3 - 1/3 * (prob[max] - 1/3) / (1 - 1/3)
             elif max == 1:
-                values[i] = 1 / 3 + 1 / 3 * prob[max]
+                temp = (prob[max] - 1/3) / (1 - 1/3)
+                values[i] = 1/2 + 1/6 * (0.5 - temp)
             else:
-                values[i] = 2 / 3 + 1 / 3 * prob[max]
+                values[i] = 2/3 + 1/3 * (prob[max] - 1/3) / (1 - 1/3) # 2 / 3 + 1 / 3 * (prob[max] - 2/3) / (1 - 2/3)
         return values
 
     height_values = predict_func(new_X_df)
@@ -64,10 +65,11 @@ def plot_decision_boundary(ax, X_scaled, predictor, color_bar=False, levels=20, 
         x2_cords,
         height_values,
         levels=levels,
-        cmap=plt.cm.winter,
+        cmap=plt.cm.RdYlBu,
         alpha=alpha,
         zorder=0
     )
+
     if color_bar:
         cbar = plt.colorbar(contour, ax=ax, fraction=0.1)
         cbar.ax.tick_params(labelsize=20)
@@ -116,9 +118,6 @@ def plot_density(ax, X_scaled, dense, color_bar=False, levels=20, alpha=0.8, ove
             x2_cords,
             height_values,
             levels=levels,
-            cmap=plt.cm.summer,
-            alpha=alpha,
-            zorder=0
         )
     if color_bar:
         cbar = plt.colorbar(contour, ax=ax, fraction=0.1)

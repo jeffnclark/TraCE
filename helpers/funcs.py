@@ -56,7 +56,7 @@ def score(x0, x1, x_prime, func=None):
         v_best = v_prime0
         psi = np.dot(v_best, v_prime1) / (length(v_best) * length(v_prime1))
     else:
-        mag = np.sqrt(length(v_prime0) ** 2 - (length(v_prime0) * np.sqrt(1 - phi ** 2)) ** 2)
+        mag = length(v_prime0) * phi
         x_best = x0 + (v / length(v)) * mag
         v_best = x_prime - x_best
         psi = np.dot(v_best, v_prime1) / (length(v_best) * length(v_prime1))
@@ -64,7 +64,7 @@ def score(x0, x1, x_prime, func=None):
     if func is None:
         lam = np.exp(-(length(v_prime1 - v_prime0)))
     else:
-        lam = func(length(v_prime1 - v_prime0))
+        lam = func(length(v_prime1))
 
     S = lam * phi + (1 - lam) * psi
 
