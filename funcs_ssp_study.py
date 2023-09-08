@@ -744,7 +744,7 @@ def plot_country_ssp_trace_scores(country_code, SSPs, start_date, end_date, freq
             # Extract features
             ssp_features = get_country_features(ssp_csv_files, country_code, date_index, frequency)
         except Exception as e:
-            continue  # Skip this SSP and move to the next
+            return  # Skip 
         
         # Calculate TraCE scores
         scores = []
