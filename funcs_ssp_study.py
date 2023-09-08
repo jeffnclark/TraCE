@@ -771,14 +771,17 @@ def plot_country_ssp_trace_scores(country_code, SSPs, start_date, end_date, freq
         if cumulative_sum:
             y_data = cumulative_sum_trace(y_data)
         ax.plot(x_data, y_data, label=f"SSP{ssp}")
-        
+    
+    plt.xlim(date_index.min(), date_index.max())
+    plt.ylim(0, y_data.max()+0.1*y_data.max())
+    
     # Add labels
     plt.xticks(rotation=45)
-    plt.xlabel('Date')
+    plt.xlabel('date')
     plt.ylabel('score')
     # plt.ylim((0,12))
     plt.legend()
-    
+
     # Add title
     if title:
         plt.title(description)
@@ -910,9 +913,11 @@ def plot_feature_timeseries(feature, country_code, SSPs, start_date, end_date, f
     ax.plot(date_index, values, marker='o', linestyle='-', label="historical")
 
     # Customise the plot
-    ax.set_xlabel(f"Date")
+    ax.set_xlabel(f"date")
     ax.set_ylabel(f"{feature} (normalised)")
-
+    ax.set_xlim(date_index.min(), date_index.max())
+    ax.set_ylim(0, values.max()+0.1*values.max())
+    
     if title:
         ax.set_title(description)
     
