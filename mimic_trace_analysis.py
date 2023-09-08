@@ -15,10 +15,21 @@ from helpers.plotters import *
 from sklearn.neural_network import MLPClassifier
 import dice_ml
 from dice_ml import Dice
-from trace_analysis import save_compressed_file, normalize_data
 from sklearn.metrics import f1_score, accuracy_score
 import pickle
 
+
+def normalize_data(df_data):
+    '''
+    function used to normalize the dataframe
+    input: df_data -  pd dataframe to be normalized
+    returns : normalized_df_data - dataframe after normalization
+    '''
+    # Calculate separate mean and standard deviation values
+    df_mean = df_data.mean()
+    df_std = df_data.std()
+    normalized_df_data=(df_data-df_mean)/df_std
+    return normalized_df_data, df_mean, df_std
 
 def remove_empty_rows(filepath):
     '''
