@@ -15,6 +15,7 @@ from funcs import *
 import numpy as np
 import matplotlib.pyplot as plt
 import itertools
+import seaborn as sns
 
 # DICTIONARIES FOR DATA DOWNLOAD
 
@@ -697,6 +698,101 @@ def cumulative_sum_trace(scores):
     df = pd.DataFrame(scores, columns=['score'])
     return df['score'].expanding().sum().to_numpy()
 
+# Calculate final (cumulative) TraCE scores for each SSP for a country
+def final_cumulative_trace(country_code, SSPs, start_date, end_date, frequency, 
+                                   data_folder, country_codes_df, 
+                                   angle_weight=0.9, 
+                                   cumulative_method="sum", verbose=True):
+
+    country_name = country_codes_df[country_codes_df['code'] == country_code]["name"].values[0]
+    
+    time_steps_dict = {
+        "M": "monthly",
+        "Q": "quarterly",
+        "A": "annual"}
+    
+    # Create the date range for analysis
+    date_index = pd.date_range(start=start_date, end=end_date, freq=frequency)
+
+    # HISTORICAL
+    # Get lists of files for historical data
+    historical_csv_files = [os.path.join(data_folder, f) for f in os.listdir(data_folder) if f.endswith(".csv") and "ssp" not in f]
+    historical_csv_files.sort()
+    # Extract features
+    try:
+        historical_features = get_country_features(historical_csv_files, country_code, date_index, frequency)
+    except:
+        return
+
+    variables_list = [os.path.split(file)[-1].replace("historical_", "").replace(".csv", "") for file in historical_csv_files]
+    variables = ", ".join(variables_list)
+    if cumulative_method == "sum":
+        description = f"{country_name} {time_steps_dict[frequency]} cumulative TraCE score with variables: {variables}"
+    elif cumulative_method == "average" or "mean":
+        description = f"{country_name} {time_steps_dict[frequency]} cumulative average TraCE score with variables: {variables}"
+    if verbose:
+        print(description)
+
+    # Create a dictionary to store final TraCE scores for each SSP
+    final_trace_scores = {}
+
+    for ssp in SSPs:
+    
+        # Get lists of files for a single SSP
+        ssp_csv_files = [os.path.join(data_folder, f) for f in os.listdir(data_folder) if f.endswith(".csv") and f"ssp{ssp}" in f]
+        ssp_csv_files.sort()
+
+        try:
+            # Extract features
+            ssp_features = get_country_features(ssp_csv_files, country_code, date_index, frequency)
+        except Exception as e:
+            return  # Skip 
+        
+        # Calculate TraCE scores
+        scores = []
+    
+        for i in range(len(date_index)-1):
+            x0 = get_x0(i, historical_features)
+            x1 = get_xt1(i, historical_features)
+            x_prime = get_xt1(i, ssp_features)
+        
+            trace = score(x0, x1, x_prime, func=lambda v : angle_weight) # weight ratio of angle to distance
+            
+            scores.append(trace)
+            
+        if cumulative_method == "sum":
+            scores = cumulative_sum_trace(scores)
+        elif cumulative_method == "average" or "mean":
+            scores = cumulative_average_trace(scores)
+        # Store only the final TraCE score for this SSP
+        final_trace_scores[ssp] = scores[-1]
+    
+    return final_trace_scores
+
+def trace_heatmap_table(country_codes_df, SSPs, start_date, end_date, frequency, data_folder,
+                        angle_weight=0.9, cumulative_method="sum", verbose=False):
+
+    trace_countries_df = country_codes_df.copy()
+    
+    # Create columns for SSPs and initialize them with NaN values
+    for ssp in SSPs:
+        column_name = f'SSP{ssp}'
+        trace_countries_df[column_name] = float('nan')
+    
+    # Apply the final_cumulative_trace function to populate the DataFrame
+    for index, row in tqdm(country_codes_df.iterrows()):
+        country_code = row['code']
+        final_trace_scores = final_cumulative_trace(country_code, 
+                                                    SSPs, start_date, end_date, frequency, 
+                                                    data_folder, country_codes_df, 
+                                                    angle_weight=angle_weight, cumulative_method=cumulative_method, 
+                                                    verbose=verbose)
+        if final_trace_scores:
+            for ssp, trace in final_trace_scores.items():
+                column_name = f'SSP{ssp}'
+                trace_countries_df.at[index, column_name] = trace
+    return trace_countries_df.dropna().reset_index(drop=True)
+
 # PLOTTING
 
 # Plot TraCE scores for each SSP for a country
@@ -925,4 +1021,34 @@ def plot_feature_timeseries(feature, country_code, SSPs, start_date, end_date, f
     ax.legend()
     
     # Show the plot
+    plt.show()
+
+# Plot TraCE score heatmap
+def plot_trace_heatmap(trace_countries_df, SSPs, end_date, cumulative_method="sum", 
+                       figsize=(10, 10), cmap="YlGnBu_r", cbar=True, format=".2f", 
+                       title="", xlabel="", ylabel=""):
+
+    # Melt the DataFrame
+    df = trace_countries_df.melt(id_vars=['code', 'name'], value_vars=[f"SSP{ssp}" for ssp in SSPs], var_name='SSP', value_name='TraCE Score')
+    
+    # Create the heatmap
+    plt.figure(figsize=figsize)
+    ax = sns.heatmap(data=df.pivot(index="name", columns="SSP", values="TraCE Score"), 
+                     annot=True, cmap=cmap, cbar=cbar, fmt=format)
+
+    
+    # Add a label to the color bar
+    if cbar:
+        cbar = ax.collections[0].colorbar
+        if cumulative_method == "sum":
+            description = f"Cumulative TraCE scores at {end_date}"
+        elif cumulative_method == "average" or "mean":
+            description = f"Cumulative average TraCE scores at {end_date}"
+        cbar.set_label(description)
+
+    # Customise the plot
+    ax.xaxis.tick_top()
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
     plt.show()
