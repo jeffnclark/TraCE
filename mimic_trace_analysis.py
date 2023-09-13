@@ -289,7 +289,8 @@ def train_classifier(filepath):
 def generate_dice_cf_global(filepath,
                             num_cases_to_assess = 3,
                             num_cfs = 1,
-                            num_trace_stays=5
+                            num_trace_stays=5,
+                            oracle_desirable_cf = False,
                             ):
     ''' Generate plot for a subset of the individuals'''
     trained_model,processed_balanced_x_train_norm,balanced_y_train,processed_x_test_norm,y_test = train_classifier(filepath)
@@ -300,32 +301,14 @@ def generate_dice_cf_global(filepath,
     
     exp_genetic_mimic,features_to_vary = cf_generator(full_df,trained_model)
 
-
-
-
-
-    # Get the variables of interest and fill in the misssing values with a mean and mode value
-    filtered_df_data = initial_processing(filepath)
-
-    # Get all unique stay_ids
-    unique_stays = filtered_df_data['stay_id'].unique()
-
-    # Remove a certain number of stay_ids for use with TraCE and not for use with model training
-    trace_stays = np.random.choice(unique_stays, num_trace_stays)
-
-    print(trace_stays)
-
-
-
-
-
-
     # Includes the patient and stay ID of an individual
     positive_stay_id_patients = obtain_stay_id_individuals(processed_x_test_norm,y_test,1)
     negative_stay_id_patients = obtain_stay_id_individuals(processed_x_test_norm,y_test,2)
 
-    positive_patient_scores, positive_times = calculate_traCE_scores(exp_genetic_mimic,positive_stay_id_patients,features_to_vary, num_cases_to_assess=num_cases_to_assess, num_cfs=num_cfs)
-    negative_patient_scores, negative_times = calculate_traCE_scores(exp_genetic_mimic,negative_stay_id_patients,features_to_vary, num_cases_to_assess=num_cases_to_assess, num_cfs=num_cfs)
+    print('------------ INITIATING FOR POSITIVE OUTCOME(S) - RFD -------------')
+    positive_patient_scores, positive_times = calculate_traCE_scores(exp_genetic_mimic,positive_stay_id_patients,features_to_vary, num_cases_to_assess=num_cases_to_assess, num_cfs=num_cfs, oracle_desirable_cf=oracle_desirable_cf, label = 'pos')
+    print('------------ INITIATING FOR NEGATIVE OUTCOME(S) - MORTALITY -------------')
+    negative_patient_scores, negative_times = calculate_traCE_scores(exp_genetic_mimic,negative_stay_id_patients,features_to_vary, num_cases_to_assess=num_cases_to_assess, num_cfs=num_cfs, oracle_desirable_cf=oracle_desirable_cf, label = 'neg')
     
     # Save the pickle files
     positive_patient_score_file_name = 'positive_patient_scores.pkl'
@@ -347,13 +330,17 @@ def calculate_traCE_scores(
         patient_data,
         features_to_vary,
         num_cases_to_assess=3,
-        num_cfs=1
+        num_cfs=1,
+        oracle_desirable_cf = False,
+        label=''
         ):
     '''
     Function used to generate the traCE scores
     inputs: dice_generator: object used to generate the counterfactuals
             patient_data: dataframe of the patients (usually linked to certain class e.g all patients raedy to be discharged)
             features_to_vary: features to vary to generate the counterfactuals using diCE
+
+            oracle_desirable_cf: utilises case's actual final timepoint as the desired counterfactual
     return: 
             collated_scores: scores for all the different timesteps for all the different individuals
             collated_times: times for all the different timesteps for all the different individuals
@@ -364,7 +351,7 @@ def calculate_traCE_scores(
     patient_scores_obtained = 0
     test_func = lambda a : 0.9
     for value, (groupStayID, groupData) in enumerate(patient_data_groups):
-        print('patient scores obtained',patient_scores_obtained)
+        print('patient scores obtained', patient_scores_obtained)
         if patient_scores_obtained >= num_cases_to_assess:
             break
         # Remove stayID
@@ -380,11 +367,14 @@ def calculate_traCE_scores(
         positive_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=num_cfs, desired_class=1,features_to_vary=features_to_vary,stopping_threshold=prob_thresh)
         negative_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=num_cfs, desired_class=2,features_to_vary=features_to_vary,stopping_threshold=prob_thresh)
         trajectory = groupData.to_numpy()
-        
+
         # Get all data points except last one (as that would be a discharge or death case)
         factual = trajectory[:-1]
         #vals = 0
         score_values = []
+        desirable_cf_scores = []
+        undesirable_cf_scores = []
+
         times = []
         for i in range(len(factual) - 1):
         # Nawid- get the initial point factual and the next point factual
@@ -393,27 +383,53 @@ def calculate_traCE_scores(
             if sum(xt-xt1) ==0:
                  pass
             else:
-            # Nawid - get the positive cf and the negative cf to cakculatethe score
+            # Nawid - get the positive cf and the negative cf to calculate the score
                 # Checks whether I obtain a counterfactual or not
                 if positive_cf.cf_examples_list[i].final_cfs_df is None or negative_cf.cf_examples_list[i].final_cfs_df is None: 
                     pass
                 else:
-                    x_prime = positive_cf.cf_examples_list[i].final_cfs_df.to_numpy()[:,:-1].flatten()
-                    x_prime = x_prime.astype(float)
+                    # Option to use actual patient outcome as positive_cf or not
+                    if oracle_desirable_cf:
+                        x_prime = trajectory[-1:][0].astype(float)
+                    else:
+                        x_prime = positive_cf.cf_examples_list[i].final_cfs_df.to_numpy()[:,:-1].flatten()
+                        x_prime = x_prime.astype(float)
+
                     x_star = negative_cf.cf_examples_list[i].final_cfs_df.to_numpy()[:,:-1].flatten()
                     x_star = x_star.astype(float)
                 
                     positive_score_value = score(xt, xt1, x_prime,func=test_func)
                     negative_score_value = score(xt, xt1, x_star,func=test_func)
+
+                    print('Desirable CF component:', positive_score_value)
+                    print('Undesirable CF component:', negative_score_value)
+
                     score_value = (positive_score_value - negative_score_value)/2
                     score_values.append(score_value)
+                    desirable_cf_scores.append(positive_score_value)
+                    undesirable_cf_scores.append(negative_score_value)
                     times.append(normalized_hours[i])
     
         if len(score_values)>0:
+
             collated_scores.append(score_values)
             collated_times.append(times)
             patient_scores_obtained +=1
-        
+            print(f'Scores for patient {patient_scores_obtained}: {score_values}')
+
+            plt.plot(desirable_cf_scores, label='Desirable')
+            plt.plot(undesirable_cf_scores, label = 'Undesirable')
+            plt.plot(score_values, label='Total TraCE')
+            plt.legend()
+            if oracle_desirable_cf:
+                plt.title(f'Test set case {patient_scores_obtained} oracle case')
+                plt.savefig(f'plot_patient_{patient_scores_obtained}_{label}_oracle.pdf')
+            else:
+                plt.title(f'Test set case {patient_scores_obtained}')
+                plt.savefig(f'plot_patient_{patient_scores_obtained}_{label}.pdf')
+            plt.show(block=False)
+            plt.close('all')
+
     return collated_scores, collated_times
 
 def analysis(filename,cumulative=False):
@@ -469,8 +485,8 @@ if __name__ == "__main__":
     path = 'full_datatable_timeSeries_Labels.csv'
     positive_patient_info, negative_patient_info = generate_dice_cf_global(
         path,
-        num_cases_to_assess=2,
-        num_cfs=1)
-    print(positive_patient_info)
-    print(negative_patient_info)
-    
+        num_cases_to_assess=20,
+        num_cfs=1,
+        oracle_desirable_cf=False)
+    print('--- Pos outcomes ---', positive_patient_info)
+    print('--- Neg outcomes ---', negative_patient_info)
