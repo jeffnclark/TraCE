@@ -17,7 +17,12 @@ import dice_ml
 from dice_ml import Dice
 from sklearn.metrics import f1_score, accuracy_score
 import pickle
+import warnings
 
+warnings.filterwarnings('ignore')
+
+seed = 42
+prob_thresh = 0.67
 
 def normalize_data(df_data):
     '''
@@ -57,7 +62,9 @@ def remove_empty_rows(filepath):
     different_rows.reset_index(drop=True, inplace=True)
     return filtered_df_data, different_rows
 
-def balancing_classes(data, data_labels):
+def balancing_classes(
+        data,
+        data_labels):
     '''
     Used to balance the data and the data labels
     input: data - can be the data or the data labels which we want to obtain values of
@@ -208,7 +215,11 @@ def cf_generator(df,classifier):
     exp_genetic_mimic = Dice(d_mimic, m_mimic, method="genetic")
     return exp_genetic_mimic, features_to_vary
     
-def obtain_stay_id_individuals(data, labels,label_value):
+def obtain_stay_id_individuals(
+        data,
+        labels,
+        label_value
+        ):
     '''
     Function used to obtain patients with a specific outcome of interest
     input - data - patient data
@@ -236,11 +247,10 @@ def train_classifier(filepath):
             x_test_norm - normalized (unbalanced ) test data
             y_test - testing labels
     '''
-    # Get the variables of interest and fill in the missing values with a mean and mode value
+    # Get the variables of interest and fill in the misssing values with a mean and mode value
     filtered_df_data = initial_processing(filepath)
 
-    # Make sure that shuffle is off to prevent splitting up the different individuals
-    train_data, test_data = train_test_split(filtered_df_data, test_size=0.2, random_state=42, shuffle=False)
+    train_data, test_data = train_test_split(filtered_df_data, test_size=0.2, random_state=seed, shuffle=False)
 
     # Remove columns which are important in general but not for the training of the classifier'
     y_train = train_data[['stay_id', 'RFD','hours_since_admission']]
@@ -251,12 +261,13 @@ def train_classifier(filepath):
     # Normalize the data
     x_train_norm, df_mean, df_std = normalize_data(x_train)
     x_test_norm = (x_test-df_mean)/df_std
+    full_norm = (filtered_df_data-df_mean)/df_std
 
     # Balance the data points belonging to the different classes in the train and test set
     balanced_x_train_norm, balanced_y_train = balancing_classes(x_train_norm,y_train)
     balanced_x_test_norm,balanced_y_test = balancing_classes(x_test_norm,y_test)
     # Train classifier
-    classifier = MLPClassifier(hidden_layer_sizes=(10, 10), random_state=1, max_iter=10).fit(balanced_x_train_norm, balanced_y_train['RFD']) 
+    classifier = MLPClassifier(hidden_layer_sizes=(10, 10), random_state=seed, max_iter=10).fit(balanced_x_train_norm, balanced_y_train['RFD']) 
     # Evaluate classifer performance
     train_predictions = classifier.predict(balanced_x_train_norm)
     f1_train_score, accuracy_train_score = f1_score(balanced_y_train['RFD'],train_predictions,average='macro'), accuracy_score(balanced_y_train['RFD'],train_predictions)    
@@ -266,10 +277,20 @@ def train_classifier(filepath):
     print('train f1',f1_train_score, 'train accuracy',accuracy_train_score)
     print('f1_test_score',f1_test_score, 'test accuracy',accuracy_test_score)
 
+    # Evaluate classifer performance - original unbalanced test set
+    unbalanced_test_predictions = classifier.predict(x_test_norm)
+    f1_unbalanced_test_score, accuracy_unbalanced_test_score = f1_score(y_test['RFD'],unbalanced_test_predictions,average='macro'), accuracy_score(y_test['RFD'],unbalanced_test_predictions)
+   
+    print('f1_unbalanced_test_score',f1_unbalanced_test_score, 'unbalanced_test accuracy',accuracy_unbalanced_test_score)
+
     return classifier, balanced_x_train_norm,balanced_y_train,x_test_norm,y_test
 
 
-def generate_dice_cf_global(filepath):
+def generate_dice_cf_global(filepath,
+                            num_cases_to_assess = 3,
+                            num_cfs = 1,
+                            num_trace_stays=5
+                            ):
     ''' Generate plot for a subset of the individuals'''
     trained_model,processed_balanced_x_train_norm,balanced_y_train,processed_x_test_norm,y_test = train_classifier(filepath)
     # Join the labels to the data
@@ -278,12 +299,33 @@ def generate_dice_cf_global(filepath):
     full_df =  pd.concat([full_df,full_test_df],axis=0)
     
     exp_genetic_mimic,features_to_vary = cf_generator(full_df,trained_model)
-    # Includes the patient and stay ID of an indiidual
+
+
+
+
+
+    # Get the variables of interest and fill in the misssing values with a mean and mode value
+    filtered_df_data = initial_processing(filepath)
+
+    # Get all unique stay_ids
+    unique_stays = filtered_df_data['stay_id'].unique()
+
+    # Remove a certain number of stay_ids for use with TraCE and not for use with model training
+    trace_stays = np.random.choice(unique_stays, num_trace_stays)
+
+    print(trace_stays)
+
+
+
+
+
+
+    # Includes the patient and stay ID of an individual
     positive_stay_id_patients = obtain_stay_id_individuals(processed_x_test_norm,y_test,1)
     negative_stay_id_patients = obtain_stay_id_individuals(processed_x_test_norm,y_test,2)
 
-    positive_patient_scores, positive_times = calculate_traCE_scores(exp_genetic_mimic,positive_stay_id_patients,features_to_vary)
-    negative_patient_scores, negative_times = calculate_traCE_scores(exp_genetic_mimic,negative_stay_id_patients,features_to_vary)
+    positive_patient_scores, positive_times = calculate_traCE_scores(exp_genetic_mimic,positive_stay_id_patients,features_to_vary, num_cases_to_assess=num_cases_to_assess, num_cfs=num_cfs)
+    negative_patient_scores, negative_times = calculate_traCE_scores(exp_genetic_mimic,negative_stay_id_patients,features_to_vary, num_cases_to_assess=num_cases_to_assess, num_cfs=num_cfs)
     
     # Save the pickle files
     positive_patient_score_file_name = 'positive_patient_scores.pkl'
@@ -300,7 +342,13 @@ def generate_dice_cf_global(filepath):
     return (positive_full_sum, posiive_full_mean, positive_full_std, positive_patient_sums, positive_patient_means, positive_patient_std), (negative_full_sum, negative_full_mean, negative_full_std, negative_patient_sums, negative_patient_means, negative_patient_std)
     
 
-def calculate_traCE_scores(dice_generator,patient_data,features_to_vary):
+def calculate_traCE_scores(
+        dice_generator,
+        patient_data,
+        features_to_vary,
+        num_cases_to_assess=3,
+        num_cfs=1
+        ):
     '''
     Function used to generate the traCE scores
     inputs: dice_generator: object used to generate the counterfactuals
@@ -317,7 +365,7 @@ def calculate_traCE_scores(dice_generator,patient_data,features_to_vary):
     test_func = lambda a : 0.9
     for value, (groupStayID, groupData) in enumerate(patient_data_groups):
         print('patient scores obtained',patient_scores_obtained)
-        if patient_scores_obtained >10:
+        if patient_scores_obtained >= num_cases_to_assess:
             break
         # Remove stayID
         
@@ -329,9 +377,8 @@ def calculate_traCE_scores(dice_generator,patient_data,features_to_vary):
         
         # Get the counterfactuals for the positive and the negative data
         # Change to numpy just to make it easier to use
-        
-        positive_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=1, desired_class=1,features_to_vary=features_to_vary,stopping_threshold=0.8)
-        negative_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=1, desired_class=2,features_to_vary=features_to_vary,stopping_threshold=0.8)
+        positive_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=num_cfs, desired_class=1,features_to_vary=features_to_vary,stopping_threshold=prob_thresh)
+        negative_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=num_cfs, desired_class=2,features_to_vary=features_to_vary,stopping_threshold=prob_thresh)
         trajectory = groupData.to_numpy()
         
         # Get all data points except last one (as that would be a discharge or death case)
@@ -358,7 +405,7 @@ def calculate_traCE_scores(dice_generator,patient_data,features_to_vary):
                 
                     positive_score_value = score(xt, xt1, x_prime,func=test_func)
                     negative_score_value = score(xt, xt1, x_star,func=test_func)
-                    score_value = positive_score_value - negative_score_value
+                    score_value = (positive_score_value - negative_score_value)/2
                     score_values.append(score_value)
                     times.append(normalized_hours[i])
     
@@ -420,6 +467,10 @@ def analysis(filename,cumulative=False):
 
 if __name__ == "__main__":
     path = 'full_datatable_timeSeries_Labels.csv'
-    positive_patient_info, negative_patient_info = generate_dice_cf_global(path)
-    
+    positive_patient_info, negative_patient_info = generate_dice_cf_global(
+        path,
+        num_cases_to_assess=2,
+        num_cfs=1)
+    print(positive_patient_info)
+    print(negative_patient_info)
     
