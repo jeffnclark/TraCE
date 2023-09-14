@@ -21,8 +21,8 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-seed = 42
-prob_thresh = 0.67
+seed = 41
+prob_thresh = 0.9
 
 def normalize_data(df_data):
     '''
@@ -300,6 +300,7 @@ def generate_dice_cf_global(filepath,
     full_df =  pd.concat([full_df,full_test_df],axis=0)
     
     exp_genetic_mimic,features_to_vary = cf_generator(full_df,trained_model)
+    features_to_vary.remove('gender')
 
     # Includes the patient and stay ID of an individual
     positive_stay_id_patients = obtain_stay_id_individuals(processed_x_test_norm,y_test,1)
@@ -364,8 +365,8 @@ def calculate_traCE_scores(
         
         # Get the counterfactuals for the positive and the negative data
         # Change to numpy just to make it easier to use
-        positive_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=num_cfs, desired_class=1,features_to_vary=features_to_vary,stopping_threshold=prob_thresh)
-        negative_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=num_cfs, desired_class=2,features_to_vary=features_to_vary,stopping_threshold=prob_thresh)
+        positive_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=num_cfs, desired_class=1,features_to_vary=features_to_vary,stopping_threshold=prob_thresh, diversity_weight=0.1)
+        negative_cf = dice_generator.generate_counterfactuals(groupData, total_CFs=num_cfs, desired_class=2,features_to_vary=features_to_vary,stopping_threshold=prob_thresh, diversity_weight=0.1)
         trajectory = groupData.to_numpy()
 
         # Get all data points except last one (as that would be a discharge or death case)
@@ -397,14 +398,29 @@ def calculate_traCE_scores(
 
                     x_star = negative_cf.cf_examples_list[i].final_cfs_df.to_numpy()[:,:-1].flatten()
                     x_star = x_star.astype(float)
-                
-                    positive_score_value = score(xt, xt1, x_prime,func=test_func)
-                    negative_score_value = score(xt, xt1, x_star,func=test_func)
+
+                    if len(x_prime) > len(xt):
+                        x_prime = x_prime.reshape((int(len(xt)), int(len(x_prime) / 17)))
+                        x_star = x_star.reshape((int(len(xt)), int(len(x_star) / 17)))
+                        positive_score_value = 0
+                        for k in range(x_prime.shape[1]):
+                            positive_score_value += score(xt, xt1, x_prime[:, k], func=test_func)
+
+                        negative_score_value = 0
+                        for k in range(x_star.shape[1]):
+                            negative_score_value += score(xt, xt1, x_star[:, k], func=test_func)
+
+                        positive_score_value = positive_score_value / x_prime.shape[1]
+                        negative_score_value = negative_score_value / x_star.shape[1]
+
+                    else:
+                        positive_score_value = score(xt, xt1, x_prime,func=test_func)
+                        negative_score_value = score(xt, xt1, x_star,func=test_func)
 
                     print('Desirable CF component:', positive_score_value)
                     print('Undesirable CF component:', negative_score_value)
 
-                    score_value = (positive_score_value - negative_score_value)/2
+                    score_value = (positive_score_value - negative_score_value) / 2
                     score_values.append(score_value)
                     desirable_cf_scores.append(positive_score_value)
                     undesirable_cf_scores.append(negative_score_value)
@@ -486,7 +502,7 @@ if __name__ == "__main__":
     positive_patient_info, negative_patient_info = generate_dice_cf_global(
         path,
         num_cases_to_assess=20,
-        num_cfs=1,
+        num_cfs=3,
         oracle_desirable_cf=False)
     print('--- Pos outcomes ---', positive_patient_info)
     print('--- Neg outcomes ---', negative_patient_info)
