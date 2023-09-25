@@ -24,7 +24,7 @@ def plot_trace_heatmap(trace_countries_df, SSPs, cumulative_method="sum",
         if cumulative_method == "sum":
             description = f"Cumulative TraCE score"
         elif cumulative_method == "average" or "mean":
-            description = f"Cumulative average TraCE score"
+            description = f"Average TraCE score"
         cbar.set_label(description, fontsize=font_scale * 12)  # Adjust colorbar label font size
 
     # Customise the plot
@@ -60,7 +60,7 @@ def plot_trace_features_heatmap(trace_features_df, SSPs, cumulative_method="sum"
         if cumulative_method == "sum":
             description = f"Cumulative TraCE score"
         elif cumulative_method == "average" or "mean":
-            description = f"Cumulative average TraCE score"
+            description = f"Average TraCE score"
         cbar.set_label(description, fontsize=font_scale * 10)
 
     # Customise the plot

@@ -877,91 +877,91 @@ def trace_heatmap_table(country_codes_df, SSPs, start_date, end_date, frequency,
 
 #     return final_trace_scores
 
-# def feature_final_cumulative_trace(country_code, feature_name, SSPs, start_date, end_date, frequency, 
-#                                    data_folder, angle_weight=0.9, cumulative_method="sum"):
+def feature_final_cumulative_trace(country_code, feature_name, SSPs, start_date, end_date, frequency, 
+                                   data_folder, angle_weight=0.9, cumulative_method="sum"):
     
-#     time_steps_dict = {
-#         "M": "monthly",
-#         "Q": "quarterly",
-#         "A": "annual"}
+    time_steps_dict = {
+        "M": "monthly",
+        "Q": "quarterly",
+        "A": "annual"}
     
-#     # Create the date range for analysis
-#     date_index = pd.date_range(start=start_date, end=end_date, freq=frequency)
+    # Create the date range for analysis
+    date_index = pd.date_range(start=start_date, end=end_date, freq=frequency)
 
-#     # HISTORICAL
-#     # Get file for historical data
-#     historical_feature_csv_files = [os.path.join(data_folder, f"historical_{feature_name}.csv")]
-#     # historical_all_features_csv_files = [os.path.join(data_folder, f) for f in os.listdir(data_folder) if f.endswith(".csv") and "ssp" not in f]
-#     # historical_all_features_csv_files.sort()
-#     # print(historical_all_features_csv_files)
-#     # historical_remaining_features_csv_files = list(set(historical_all_features_csv_files) - set(historical_feature_csv_files))
-#     # historical_remaining_features_csv_files.sort()
-#     # print(historical_remaining_features_csv_files)
-#     # Extract features
-#     try:
-#         historical_features = get_country_features(historical_feature_csv_files, country_code, date_index, frequency)
-#         # historical_all_features = get_country_features(historical_all_features_csv_files, country_code, date_index, frequency)
-#         # historical_remaining_features = get_country_features(historical_remaining_features_csv_files, country_code, date_index, frequency)
-#     except:
-#         return
+    # HISTORICAL
+    # Get file for historical data
+    historical_feature_csv_files = [os.path.join(data_folder, f"historical_{feature_name}.csv")]
+    # historical_all_features_csv_files = [os.path.join(data_folder, f) for f in os.listdir(data_folder) if f.endswith(".csv") and "ssp" not in f]
+    # historical_all_features_csv_files.sort()
+    # print(historical_all_features_csv_files)
+    # historical_remaining_features_csv_files = list(set(historical_all_features_csv_files) - set(historical_feature_csv_files))
+    # historical_remaining_features_csv_files.sort()
+    # print(historical_remaining_features_csv_files)
+    # Extract features
+    try:
+        historical_features = get_country_features(historical_feature_csv_files, country_code, date_index, frequency)
+        # historical_all_features = get_country_features(historical_all_features_csv_files, country_code, date_index, frequency)
+        # historical_remaining_features = get_country_features(historical_remaining_features_csv_files, country_code, date_index, frequency)
+    except:
+        return
 
-#     final_trace_scores = {}
+    final_trace_scores = {}
 
-#     for ssp in SSPs:
+    for ssp in SSPs:
     
-#         # Get lists of files for a single SSP
-#         ssp_feature_csv_files = [os.path.join(data_folder, f"ssp{ssp}_{feature_name}.csv")]
-#         # ssp_all_features_csv_files = [os.path.join(data_folder, f) for f in os.listdir(data_folder) if f.endswith(".csv") and f"ssp{ssp}" in f]
-#         # ssp_all_features_csv_files.sort()
-#         # print(ssp_all_features_csv_files)
-#         # ssp_remaining_features_csv_files = list(set(ssp_all_features_csv_files) - set(ssp_feature_csv_files))
-#         # ssp_remaining_features_csv_files.sort()
-#         # print(ssp_remaining_features_csv_files)
+        # Get lists of files for a single SSP
+        ssp_feature_csv_files = [os.path.join(data_folder, f"ssp{ssp}_{feature_name}.csv")]
+        # ssp_all_features_csv_files = [os.path.join(data_folder, f) for f in os.listdir(data_folder) if f.endswith(".csv") and f"ssp{ssp}" in f]
+        # ssp_all_features_csv_files.sort()
+        # print(ssp_all_features_csv_files)
+        # ssp_remaining_features_csv_files = list(set(ssp_all_features_csv_files) - set(ssp_feature_csv_files))
+        # ssp_remaining_features_csv_files.sort()
+        # print(ssp_remaining_features_csv_files)
 
-#         try:
-#             # Extract features
-#             ssp_features = get_country_features(ssp_feature_csv_files, country_code, date_index, frequency)
-#             # ssp_all_features = get_country_features(ssp_all_features_csv_files, country_code, date_index, frequency)
-#             # ssp_remaining_features = get_country_features(ssp_remaining_features_csv_files, country_code, date_index, frequency)
-#         except Exception as e:
-#             return  # Skip 
+        try:
+            # Extract features
+            ssp_features = get_country_features(ssp_feature_csv_files, country_code, date_index, frequency)
+            # ssp_all_features = get_country_features(ssp_all_features_csv_files, country_code, date_index, frequency)
+            # ssp_remaining_features = get_country_features(ssp_remaining_features_csv_files, country_code, date_index, frequency)
+        except Exception as e:
+            return  # Skip 
         
-#         # Calculate TraCE scores
-#         scores = []
-#         # scores_all = []
-#         # scores_remaining = []
+        # Calculate TraCE scores
+        scores = []
+        # scores_all = []
+        # scores_remaining = []
     
-#         for i in range(len(date_index)-1):
-#             x0 = get_x0(i, historical_features)
-#             x1 = get_xt1(i, historical_features)
-#             x_prime = get_xt1(i, ssp_features)
-#             trace = score(x0, x1, x_prime, func=lambda v : angle_weight)
-#             # x0_remaining_features = get_x0(i, historical_remaining_features)
-#             # x1_remaining_features = get_xt1(i, historical_remaining_features)
-#             # x_prime_remaining_features = get_xt1(i, ssp_remaining_features)
-#             # trace_remaining_features = score(x0_remaining_features, x1_remaining_features, x_prime_remaining_features, 
-#             #                                  func=lambda v : angle_weight) # weight ratio of angle to distance
+        for i in range(len(date_index)-1):
+            x0 = get_x0(i, historical_features)
+            x1 = get_xt1(i, historical_features)
+            x_prime = get_xt1(i, ssp_features)
+            trace = score(x0, x1, x_prime, func=lambda v : angle_weight)
+            # x0_remaining_features = get_x0(i, historical_remaining_features)
+            # x1_remaining_features = get_xt1(i, historical_remaining_features)
+            # x_prime_remaining_features = get_xt1(i, ssp_remaining_features)
+            # trace_remaining_features = score(x0_remaining_features, x1_remaining_features, x_prime_remaining_features, 
+            #                                  func=lambda v : angle_weight) # weight ratio of angle to distance
             
-#             # x0_all_features = get_x0(i, historical_all_features)
-#             # x1_all_features = get_xt1(i, historical_all_features)
-#             # x_prime_all_features = get_xt1(i, ssp_all_features)
-#             # trace_all_features = score(x0_all_features, x1_all_features, x_prime_all_features, func=lambda v : angle_weight)
+            # x0_all_features = get_x0(i, historical_all_features)
+            # x1_all_features = get_xt1(i, historical_all_features)
+            # x_prime_all_features = get_xt1(i, ssp_all_features)
+            # trace_all_features = score(x0_all_features, x1_all_features, x_prime_all_features, func=lambda v : angle_weight)
             
-#             # trace = trace_all_features - trace_remaining_features 
-#             scores.append(trace)
-#             # scores_all.append(trace_all_features)
-#             # scores_remaining.append(trace_remaining_features)
+            # trace = trace_all_features - trace_remaining_features 
+            scores.append(trace)
+            # scores_all.append(trace_all_features)
+            # scores_remaining.append(trace_remaining_features)
             
-#         if cumulative_method == "sum":
-#             cumulative_scores = cumulative_sum_trace(scores)
-#             # cumulative_scores = cumulative_sum_trace(scores_all) - cumulative_sum_trace(scores_remaining)
-#         elif cumulative_method == "average" or "mean":
-#             cumulative_scores = cumulative_average_trace(scores)
-#             # cumulative_scores = cumulative_average_trace(scores_all) - cumulative_average_trace(scores_remaining)
-#         # Store only the final score for this SSP
-#         final_trace_scores[ssp] = cumulative_scores[-1]
+        if cumulative_method == "sum":
+            cumulative_scores = cumulative_sum_trace(scores)
+            # cumulative_scores = cumulative_sum_trace(scores_all) - cumulative_sum_trace(scores_remaining)
+        elif cumulative_method == "average" or "mean":
+            cumulative_scores = cumulative_average_trace(scores)
+            # cumulative_scores = cumulative_average_trace(scores_all) - cumulative_average_trace(scores_remaining)
+        # Store only the final score for this SSP
+        final_trace_scores[ssp] = cumulative_scores[-1]
 
-#     return final_trace_scores
+    return final_trace_scores
 
 # Produce a heatmap table for the features of a specified country
 def features_trace_heatmap_table(country_code, SSPs, start_date, end_date, frequency, 
@@ -1037,7 +1037,8 @@ def feature_trace_scores(country_code, feature_name, SSPs, start_date, end_date,
 # PLOTTING
 
 # Plot TraCE scores for each SSP for a country
-def plot_country_ssp_trace_scores(country_code, SSPs, start_date, end_date, frequency, data_folder, country_codes_df, angle_weight=0.9, cumulative_sum=True, figsize=(20, 6), title=True):
+def plot_country_ssp_trace_scores(country_code, SSPs, start_date, end_date, frequency, data_folder, country_codes_df, angle_weight=0.9, cumulative_sum=True, 
+                                  figsize=(20, 6), title=True, font_scale=1.5):
 
     country_name = country_codes_df[country_codes_df['code'] == country_code]["name"].values[0]
     
@@ -1119,15 +1120,16 @@ def plot_country_ssp_trace_scores(country_code, SSPs, start_date, end_date, freq
     ax.tick_params(axis='y', colors='black')
     
     # Add labels
-    plt.xticks(rotation=45)
-    plt.xlabel('date')
-    plt.ylabel('score')
+    plt.xticks(rotation=0, fontsize=font_scale*12)
+    plt.yticks(fontsize=font_scale*12)
+    plt.xlabel('date', fontsize=font_scale*12)
+    plt.ylabel('score', fontsize=font_scale*12)
     # plt.ylim((0,12))
-    plt.legend()
+    plt.legend(fontsize=font_scale*12)
 
     # Add title
     if title:
-        plt.title(description)
+        plt.title(description, fontsize=font_scale*14)
     
     # Display the plot
     plt.tight_layout()
