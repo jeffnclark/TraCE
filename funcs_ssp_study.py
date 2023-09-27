@@ -1134,6 +1134,8 @@ def plot_country_ssp_trace_scores(country_code, SSPs, start_date, end_date, freq
     # Display the plot
     plt.tight_layout()
     plt.show()
+
+    return fig
     
 # Plot two normalised features against each other, for all the SSPs and historical data
 def plot_two_features(feature_x, feature_y, country_code, SSPs, start_date, end_date, frequency, data_folder, country_codes_df, figsize=(10,10), title=True):
@@ -1206,7 +1208,9 @@ def plot_two_features(feature_x, feature_y, country_code, SSPs, start_date, end_
     # Show the plot
     plt.show()
 
-# Plot two normalised features against each other, for all the SSPs and historical data
+    return fig
+
+# Plot time series for a feature, for historical and SSPs
 def plot_feature_timeseries(feature, country_code, SSPs, start_date, end_date, frequency, data_folder, country_codes_df, figsize=(20, 6), title=True):
 
     country_name = country_codes_df[country_codes_df['code'] == country_code]["name"].values[0]
@@ -1281,7 +1285,7 @@ def plot_feature_timeseries(feature, country_code, SSPs, start_date, end_date, f
     # Show the plot
     plt.show()
 
-
+    return fig
 
 # # Plot TraCE heatmap with matplotlib
 

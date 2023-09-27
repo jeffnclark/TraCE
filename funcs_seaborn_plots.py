@@ -14,7 +14,7 @@ def plot_trace_heatmap(trace_countries_df, SSPs, cumulative_method="sum",
     df = trace_countries_df.melt(id_vars=['code', 'name'], value_vars=[f"SSP{ssp}" for ssp in SSPs], var_name='SSP', value_name='TraCE Score')
     
     # Create the heatmap
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
     ax = sns.heatmap(data=df.pivot(index="name", columns="SSP", values="TraCE Score"),
                      annot=True, cmap=cmap, cbar=cbar, fmt=format, annot_kws={"weight": "bold"})
 
@@ -35,10 +35,12 @@ def plot_trace_heatmap(trace_countries_df, SSPs, cumulative_method="sum",
     
     plt.tight_layout()
     plt.show()
+    
+    return fig
 
 
 
-# Plot TraCE score heatmap
+# Plot TraCE score heatmap for features
 def plot_trace_features_heatmap(trace_features_df, SSPs, cumulative_method="sum", 
                        figsize=(8,5), cmap="YlOrRd", cbar=True, format=".2f", 
                        title="", xlabel="", ylabel="", font_scale=1.5):
@@ -49,7 +51,7 @@ def plot_trace_features_heatmap(trace_features_df, SSPs, cumulative_method="sum"
     df = trace_features_df.melt(id_vars=["feature"], value_vars=[f"SSP{ssp}" for ssp in SSPs], var_name='SSP', value_name='TraCE Score')
     
     # Create the heatmap
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
     ax = sns.heatmap(data=df.pivot(index="feature", columns="SSP", values="TraCE Score"), 
                      annot=True, cmap=cmap, cbar=cbar, fmt=format, annot_kws={"weight": "bold"})
 
@@ -69,3 +71,5 @@ def plot_trace_features_heatmap(trace_features_df, SSPs, cumulative_method="sum"
     ax.set_xlabel(xlabel, fontsize=font_scale * 12)
     ax.set_ylabel(ylabel, fontsize=font_scale * 12)
     plt.show()
+
+    return fig
