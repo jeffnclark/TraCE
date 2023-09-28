@@ -71,8 +71,8 @@ for count1, feature in enumerate(features):
     max_y = 0
     for count2, data in enumerate(datas[1::]):
         temp = np.sqrt(np.cumsum((datas[0] - data)**2))
-        if np.max(temp) > max_y:
-            max_y = np.max(temp)
+        if np.nanmax(temp) > max_y:
+            max_y = np.nanmax(temp)
         ax[row, col].plot(dates, temp, label='ssp ' + str(count2 + 1))
         ax[row, col].set_xlim([np.min(dates), np.max(dates)])
         ax[row, col].set_ylim([0, np.max(temp)])
@@ -104,8 +104,8 @@ temp_max = 0
 for i in range(5):
     temp = totals[:, i, :].sum(axis=0)
     plt.plot(dates, temp, label='ssp ' + str(i + 1))
-    if temp_max < np.max(temp):
-        temp_max = np.max(temp)
+    if temp_max < np.nanmax(temp):
+        temp_max = np.nanmax(temp)
 plt.legend(loc='upper left')
 plt.title(country_code + " Total Contribution to SSP")
 plt.ylabel('Difference between SSP and Ground Truth')
