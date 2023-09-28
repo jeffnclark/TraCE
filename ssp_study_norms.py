@@ -59,7 +59,7 @@ path = "data/ssp_data/"
 start_date = "2015-02-01"
 end_date = "2021-12-31"
 frequency = "M"
-country_code = "IND"
+country_code = "USA"
 features = ["ch4", "gdp", "population", "precipitation", "temperature"]
 dates = pd.date_range(start=start_date, end=end_date, freq=frequency)
 totals = np.zeros((len(features), 5, len(dates)))
@@ -68,14 +68,22 @@ row = 0
 col = 0
 for count1, feature in enumerate(features):
     datas = get_country(path, country_code, frequency, feature, dates)
-
+    max_y = 0
     for count2, data in enumerate(datas[1::]):
         temp = np.sqrt(np.cumsum((datas[0] - data)**2))
+        if np.max(temp) > max_y:
+            max_y = np.max(temp)
         ax[row, col].plot(dates, temp, label='ssp ' + str(count2 + 1))
+        ax[row, col].set_xlim([np.min(dates), np.max(dates)])
+        ax[row, col].set_ylim([0, np.max(temp)])
         totals[count1, count2, :] = temp
     ax[row, col].set_title(feature)
+    ax[row, col].set_xlim([np.min(dates), np.max(dates)])
+    ax[row, col].set_ylim([0, max_y])
+    totals[count1, count2, :] = temp
     plt.ylabel('Difference between SSP and Ground Truth')
     plt.xlabel('Time')
+
     col += 1
     if col > 2:
         row = 1
@@ -89,5 +97,19 @@ plt.legend(loc='upper left')
 ax[1, 2].set_title("Total Contribution to SSP")
 plt.ylabel('Difference between SSP and Ground Truth')
 fig.suptitle(country_code, fontsize="x-large")
-plt.savefig("plots/norm/" + country_code + ".pdf")
-print("stop")
+plt.savefig("plots/norm/split/" + country_code + ".pdf")
+
+fig = plt.figure(figsize=(6, 3.5))
+temp_max = 0
+for i in range(5):
+    temp = totals[:, i, :].sum(axis=0)
+    plt.plot(dates, temp, label='ssp ' + str(i + 1))
+    if temp_max < np.max(temp):
+        temp_max = np.max(temp)
+plt.legend(loc='upper left')
+plt.title(country_code + " Total Contribution to SSP")
+plt.ylabel('Difference between SSP and Ground Truth')
+plt.xlabel('Year')
+plt.xlim([np.min(dates), np.max(dates)])
+plt.ylim([0, temp_max])
+plt.savefig("plots/norm/totals/" + country_code + ".pdf")
