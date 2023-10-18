@@ -18,11 +18,12 @@ from dice_ml import Dice
 from sklearn.metrics import f1_score, accuracy_score
 import pickle
 import warnings
+from sklearn.neighbors import KDTree
 
 warnings.filterwarnings('ignore')
 
 seed = 42
-prob_thresh = 0.67
+prob_thresh = 0.9
 
 def normalize_data(df_data):
     '''
@@ -253,6 +254,7 @@ def train_classifier(filepath):
     train_data, test_data = train_test_split(filtered_df_data, test_size=0.2, random_state=seed, shuffle=False)
 
     # Remove columns which are important in general but not for the training of the classifier'
+
     y_train = train_data[['stay_id', 'RFD','hours_since_admission']]
     x_train = train_data.drop(columns=['stay_id', 'RFD','hours_since_admission'])
 
@@ -262,6 +264,13 @@ def train_classifier(filepath):
     x_train_norm, df_mean, df_std = normalize_data(x_train)
     x_test_norm = (x_test-df_mean)/df_std
     full_norm = (filtered_df_data-df_mean)/df_std
+
+    # for KDTree
+    ind_rfd_1 = x_train_norm[y_train['RFD']==1]
+    ind_rfd_2 = x_train_norm[y_train['RFD']==2]
+
+    tree_1 = KDTree(ind_rfd_1)
+    tree_2 = KDTree(ind_rfd_2)
 
     # Balance the data points belonging to the different classes in the train and test set
     balanced_x_train_norm, balanced_y_train = balancing_classes(x_train_norm,y_train)
@@ -283,7 +292,7 @@ def train_classifier(filepath):
    
     print('f1_unbalanced_test_score',f1_unbalanced_test_score, 'unbalanced_test accuracy',accuracy_unbalanced_test_score)
 
-    return classifier, balanced_x_train_norm,balanced_y_train,x_test_norm,y_test
+    return classifier, balanced_x_train_norm,balanced_y_train,x_test_norm,y_test, tree_1, tree_2, ind_rfd_1, ind_rfd_2
 
 
 def generate_dice_cf_global(filepath,
@@ -293,7 +302,7 @@ def generate_dice_cf_global(filepath,
                             oracle_desirable_cf = False,
                             ):
     ''' Generate plot for a subset of the individuals'''
-    trained_model,processed_balanced_x_train_norm,balanced_y_train,processed_x_test_norm,y_test = train_classifier(filepath)
+    trained_model,processed_balanced_x_train_norm,balanced_y_train,processed_x_test_norm,y_test,tree_1, tree_2,ind_rfd_1,ind_rfd_2 = train_classifier(filepath)
     # Join the labels to the data
     full_df = pd.concat([processed_balanced_x_train_norm, balanced_y_train['RFD']],axis=1)
     full_test_df =pd.concat([processed_x_test_norm,y_test['RFD']],axis=1) 
@@ -307,9 +316,28 @@ def generate_dice_cf_global(filepath,
     negative_stay_id_patients = obtain_stay_id_individuals(processed_x_test_norm,y_test,2)
 
     print('------------ INITIATING FOR POSITIVE OUTCOME(S) - RFD -------------')
-    positive_patient_scores, positive_times = calculate_traCE_scores(exp_genetic_mimic,positive_stay_id_patients,features_to_vary, num_cases_to_assess=num_cases_to_assess, num_cfs=num_cfs, oracle_desirable_cf=oracle_desirable_cf, label = 'pos', model = trained_model)
+    positive_patient_scores, positive_times = calculate_traCE_scores(exp_genetic_mimic,
+                                                                     positive_stay_id_patients,
+                                                                     features_to_vary,
+                                                                     num_cases_to_assess=num_cases_to_assess,
+                                                                     num_cfs=num_cfs,
+                                                                     oracle_desirable_cf=oracle_desirable_cf,
+                                                                     label = 'pos', model = trained_model,
+                                                                     tree_1=tree_1, tree_2=tree_2,
+                                                                     ind_rfd_1=ind_rfd_1,
+                                                                     ind_rfd_2=ind_rfd_2)
     print('------------ INITIATING FOR NEGATIVE OUTCOME(S) - MORTALITY -------------')
-    negative_patient_scores, negative_times = calculate_traCE_scores(exp_genetic_mimic,negative_stay_id_patients,features_to_vary, num_cases_to_assess=num_cases_to_assess, num_cfs=num_cfs, oracle_desirable_cf=oracle_desirable_cf, label = 'neg', model = trained_model)
+    negative_patient_scores, negative_times = calculate_traCE_scores(exp_genetic_mimic,
+                                                                     negative_stay_id_patients,
+                                                                     features_to_vary,
+                                                                    num_cases_to_assess=num_cases_to_assess,
+                                                                    num_cfs=num_cfs,
+                                                                    oracle_desirable_cf=oracle_desirable_cf,
+                                                                    label = 'neg',
+                                                                    model = trained_model,
+                                                                    tree_1=tree_1, tree_2=tree_2,
+                                                                    ind_rfd_1=ind_rfd_1,
+                                                                    ind_rfd_2=ind_rfd_2)
     
     # Save the pickle files
     positive_patient_score_file_name = 'positive_patient_scores.pkl'
@@ -323,7 +351,7 @@ def generate_dice_cf_global(filepath,
     # Obtains the values of interest for processing
     positive_full_sum, posiive_full_mean, positive_full_std, positive_patient_sums, positive_patient_means, positive_patient_std = analysis(positive_patient_score_file_name,cumulative=False)
     negative_full_sum, negative_full_mean, negative_full_std, negative_patient_sums, negative_patient_means, negative_patient_std = analysis(negative_patient_score_file_name,cumulative=False)
-    return (positive_full_sum, posiive_full_mean, positive_full_std, positive_patient_sums, positive_patient_means, positive_patient_std), (negative_full_sum, negative_full_mean, negative_full_std, negative_patient_sums, negative_patient_means, negative_patient_std)
+    return (posiive_full_mean, positive_full_std, positive_patient_means, positive_patient_std), (negative_full_mean, negative_full_std, negative_patient_means, negative_patient_std)
     
 
 def calculate_traCE_scores(
@@ -335,6 +363,10 @@ def calculate_traCE_scores(
         num_cfs=3,
         oracle_desirable_cf = False,
         label='',
+        tree_1='',
+        tree_2='',
+        ind_rfd_1='',
+        ind_rfd_2='',
         ):
     '''
     Function used to generate the traCE scores
@@ -344,6 +376,8 @@ def calculate_traCE_scores(
 
             oracle_desirable_cf: utilises case's actual final timepoint as the desired counterfactual
             model: trained model to calculate prediction probabilities on
+            tree_1: KDTree for class 1 (successful discharge)
+            tree_2: KDTree fOR class 2 (mortality)
     return: 
             collated_scores: scores for all the different timesteps for all the different individuals
             collated_times: times for all the different timesteps for all the different individuals
@@ -373,48 +407,67 @@ def calculate_traCE_scores(
         rfd_prob = prediction_probabilities[:, 1]
         mortality_prob = prediction_probabilities[:, 2]
 
-        plt.plot(nrfd_prob, label='NRFD, 0')
-        plt.plot(rfd_prob, label = 'RFD, 1')
-        plt.plot(mortality_prob, label='Mortality, 2')
+        plt.plot(nrfd_prob, label='NRFD', color='m')
+        plt.plot(rfd_prob, label = 'RFD', color='blue')
+        plt.plot(mortality_prob, label='Mortality', color='orange')
+        plt.xlabel('ICU Stay Timepoint')
+        plt.ylabel('Probability')
         plt.legend()
-        plt.title(f'Test set case {patient_scores_obtained} probs')
+        plt.tight_layout()
         plt.savefig(f'plots/plot_patient_{patient_scores_obtained}_{label}_probs.pdf')
         plt.show(block=False)
         plt.close('all')
 
+        '''
         end_point = groupData.shape[0]
-        if end_point > 6:
-            end_point = 6
+        if end_point > 4:
+            end_point = 4
+        '''
         # Get the counterfactuals for the positive and the negative data
         # Change to numpy just to make it easier to use
-        positive_cf = dice_generator.generate_counterfactuals(query_instances=groupData,
-                                                              #.iloc[0:end_point,:],
+        positive_cf_dist, positive_cf_ind = tree_1.query(groupData, k = num_cfs)
+        positive_cf = ind_rfd_1.iloc[positive_cf_ind[0]]
+        negative_cf_dist, negative_cf_ind = tree_2.query(groupData, k = num_cfs)
+        negative_cf = ind_rfd_2.iloc[negative_cf_ind[0]]
+
+        '''
+            positive_cf = dice_generator.generate_counterfactuals(query_instances=groupData.iloc[0:end_point,:],
                                                               total_CFs=num_cfs,
                                                               desired_class=1,
                                                               features_to_vary=features_to_vary,
                                                               stopping_threshold=prob_thresh,
-                                                              proximity_weight=0.05/num_cfs,
+                                                              proximity_weight=0.5/num_cfs,
                                                               diversity_weight=0.1)
         
-        negative_cf = dice_generator.generate_counterfactuals(query_instances=groupData,
-                                                              #.iloc[0:end_point,:],
+        negative_cf = dice_generator.generate_counterfactuals(query_instances=groupData.iloc[0:end_point,:],
                                                               total_CFs=num_cfs,
                                                               desired_class=2,
                                                               features_to_vary=features_to_vary,
                                                               stopping_threshold=prob_thresh,
-                                                              proximity_weight=0.1/num_cfs,
+                                                              proximity_weight=0.5/num_cfs,
                                                               diversity_weight=0.1)
+        '''
 
-        for l in positive_cf.cf_examples_list:
-            temp = l.final_cfs_df.drop(['RFD'], axis=1)
-            print('Desirable prob', model.predict_proba(temp))
+
+
+        '''
+        if not oracle_desirable_cf:
+            for l in positive_cf_ind:
+                temp = l.final_cfs_df.drop(['RFD'], axis=1)
+                print('Desirable prob', model.predict_proba(temp))
 
         for l in negative_cf.cf_examples_list:
             temp = l.final_cfs_df.drop(['RFD'], axis=1)
             print('Undesirable prob', model.predict_proba(temp))
+        '''
 
         # Get all data points except last one (as that would be a discharge or death case)
-        factual = trajectory[:-1]
+
+        # Original 
+        #factual = trajectory[:-1]
+        # Updated to include final time point, but sometimes breaks! 
+        factual = trajectory[:]
+        print('Factual', factual)
         #vals = 0
         score_values = []
         desirable_cf_scores = []
@@ -427,36 +480,72 @@ def calculate_traCE_scores(
             xt = factual[i, :]
             xt1 = factual[i + 1, :]
             if sum(xt-xt1) ==0:
-                 pass
+                positive_score_value = 0.0
+                negative_score_value = 0.0
+                score_value = 0.0
+                score_values.append(score_value)
+                desirable_cf_scores.append(positive_score_value)
+                undesirable_cf_scores.append(negative_score_value)
+                times.append(normalized_hours[i])
             else:
             # Nawid - get the positive cf and the negative cf to calculate the score
                 # Checks whether I obtain a counterfactual or not
-                if positive_cf.cf_examples_list[i].final_cfs_df is None or negative_cf.cf_examples_list[i].final_cfs_df is None: 
-                    pass
+                if positive_cf_ind[i] is None or negative_cf_ind[i] is None: 
+                    positive_score_value = 0.0
+                    negative_score_value = 0.0
+                    score_value = 0.0
+                    score_values.append(score_value)
+                    desirable_cf_scores.append(positive_score_value)
+                    undesirable_cf_scores.append(negative_score_value)
+                    times.append(normalized_hours[i])
                 else:
                     # Option to use actual patient outcome as positive_cf or not
                     if oracle_desirable_cf:
                         x_prime = trajectory[-1:][0].astype(float)
                     else:
-                        x_prime = positive_cf.cf_examples_list[i].final_cfs_df.to_numpy()[:,:-1].flatten()
+                        x_prime = ind_rfd_1.iloc[positive_cf_ind[i]].to_numpy()
                         x_prime = x_prime.astype(float)
 
-                    x_star = negative_cf.cf_examples_list[i].final_cfs_df.to_numpy()[:,:-1].flatten()
+                    x_star = ind_rfd_2.iloc[negative_cf_ind[i]].to_numpy()
                     x_star = x_star.astype(float)
 
-                    if len(x_prime) > len(xt):
-                        x_prime = x_prime.reshape((int(len(xt)), int(len(x_prime) / 17)))
-                        x_star = x_star.reshape((int(len(xt)), int(len(x_star) / 17)))
+                    if x_prime.shape[0] > 1:
                         positive_score_value = 0
-                        for k in range(x_prime.shape[1]):
-                            positive_score_value += score(xt, xt1, x_prime[:, k], func=test_func)
+                        np.argwhere(xt - x_star != 0)
+                        num_pos = 0
+                        for k in range(x_prime.shape[0]):
+                            if oracle_desirable_cf:
+                                temp_ind = np.argwhere(xt - x_prime != 0)
+                            else:
+                                temp_ind = np.argwhere(xt - x_prime[k, :] != 0)
+                            temp_xt = xt[temp_ind].reshape((len(temp_ind)))
+                            temp_xt1 = xt1[temp_ind].reshape((len(temp_ind)))
+                            if oracle_desirable_cf:
+                                temp_xprime = x_prime[temp_ind].reshape((len(temp_ind)))
+                            else:
+                                temp_xprime = x_prime[k, temp_ind].reshape((len(temp_ind)))
+                            temp_bug1 = np.sum(temp_xt - temp_xt1)
+                            if temp_bug1 != 0:
+                                num_pos+=1
+                                positive_score_value += score(temp_xt, temp_xt1, temp_xprime, func=test_func)
 
                         negative_score_value = 0
-                        for k in range(x_star.shape[1]):
-                            negative_score_value += score(xt, xt1, x_star[:, k], func=test_func)
-
-                        positive_score_value = positive_score_value / x_prime.shape[1]
-                        negative_score_value = negative_score_value / x_star.shape[1]
+                        num_neg = 0
+                        for k in range(x_star.shape[0]):
+                            temp_ind = np.argwhere(xt - x_star[k, :] != 0)
+                            temp_xt = xt[temp_ind].reshape((len(temp_ind)))
+                            temp_xt1 = xt1[temp_ind].reshape((len(temp_ind)))
+                            temp_x_star = x_star[k, temp_ind].reshape((len(temp_ind)))
+                            temp_bug1 = np.sum(temp_xt - temp_xt1)
+                            if temp_bug1 != 0:
+                                num_neg+=1
+                                negative_score_value += score(temp_xt, temp_xt1, temp_x_star, func=test_func)
+                        if num_pos == 0 or num_neg == 0:
+                            positive_score_value = 0
+                            negative_score_value = 0
+                        else:
+                            positive_score_value = positive_score_value / num_pos
+                            negative_score_value = negative_score_value / num_neg
 
                     else:
                         positive_score_value = score(xt, xt1, x_prime,func=test_func)
@@ -477,16 +566,17 @@ def calculate_traCE_scores(
             collated_times.append(times)
             print(f'Scores for patient {patient_scores_obtained}: {score_values}')
 
-            plt.plot(desirable_cf_scores, label='Desirable')
-            plt.plot(undesirable_cf_scores, label = 'Undesirable')
-            plt.plot(score_values, label='Total TraCE')
+            plt.plot(desirable_cf_scores, label=f'Desirable: {np.mean(desirable_cf_scores):.2f}')
+            plt.plot(undesirable_cf_scores, label = f'Undesirable: {np.mean(undesirable_cf_scores):.2f} ')
+            plt.plot(score_values, label=f'Total TraCE: {np.mean(score_values):.2f}')
+            plt.xlabel('ICU Stay Timepoint')
+            plt.ylabel('TraCE Score')
+            plt.tight_layout()
             plt.legend()
             if oracle_desirable_cf:
-                plt.title(f'Test set case {patient_scores_obtained} oracle case')
-                plt.savefig(f'plots/plot_patient_{patient_scores_obtained}_{label}_oracle.pdf')
+                plt.savefig(f'plots/plot_patient_{patient_scores_obtained}_{label}_TraCE_KDTree_oracle.pdf')
             else:
-                plt.title(f'Test set case {patient_scores_obtained}')
-                plt.savefig(f'plots/plot_patient_{patient_scores_obtained}_{label}.pdf')
+                plt.savefig(f'plots/plot_patient_{patient_scores_obtained}_{label}_TraCE_KDTree.pdf')
             plt.show(block=False)
             plt.close('all')
             patient_scores_obtained +=1
@@ -518,6 +608,7 @@ def analysis(filename,cumulative=False):
     patient_means = []
     patient_std = []
     cum_sum_list =[]
+    final_timepoints = []
     for sublist in scores:
         if cumulative:
             sublist = cumulative_average_trace(sublist)
@@ -530,6 +621,7 @@ def analysis(filename,cumulative=False):
         
         std_val = np.std(sublist)
         patient_std.append(std_val)
+        final_timepoints.append(sublist[-1:])
     
     if cumulative:
         full_sum = np.sum(np.concatenate(cum_sum_list))
@@ -539,6 +631,19 @@ def analysis(filename,cumulative=False):
         full_sum = np.sum(np.concatenate(scores))
         full_std = np.std(np.concatenate(scores))
         full_mean = np.mean(np.concatenate(scores))
+        full_mean_jeff = np.mean(patient_means)
+        full_std_jeff = np.std(patient_means)
+        final_timepoint_mean_jeff = np.mean(final_timepoints)
+        final_timepoint_std_jeff = np.std(final_timepoints)
+
+        print('Jeff mean', full_mean_jeff)
+        print('Jeff std', full_std_jeff)
+        print('Jeff final timepoint mean', final_timepoint_mean_jeff)
+        print('Jeff final timepoint std', final_timepoint_std_jeff)
+        print('Index of max:', max(patient_means), patient_means.index(max(patient_means)))
+        print('Index of min:', min(patient_means), patient_means.index(min(patient_means)))
+
+
     return full_sum, full_mean, full_std, patient_sums, patient_means, patient_std
 
 
