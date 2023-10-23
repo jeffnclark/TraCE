@@ -59,7 +59,7 @@ path = "data/ssp_data/"
 start_date = "2015-02-01"
 end_date = "2021-12-31"
 frequency = "M"
-country_code = "USA"
+country_code = "BRA"
 features = ["ch4", "gdp", "population", "precipitation", "temperature"]
 dates = pd.date_range(start=start_date, end=end_date, freq=frequency)
 totals = np.zeros((len(features), 5, len(dates)))
@@ -99,17 +99,21 @@ plt.ylabel('Difference between SSP and Ground Truth')
 fig.suptitle(country_code, fontsize="x-large")
 plt.savefig("plots/norm/split/" + country_code + ".pdf")
 
-fig = plt.figure(figsize=(6, 3.5))
+fig = plt.figure(figsize=(10, 6))
+font_scale = 1.5
 temp_max = 0
 for i in range(5):
     temp = totals[:, i, :].sum(axis=0)
-    plt.plot(dates, temp, label='ssp ' + str(i + 1))
+    plt.plot(dates, temp, label='SSP' + str(i + 1))
     if temp_max < np.nanmax(temp):
         temp_max = np.nanmax(temp)
-plt.legend(loc='upper left')
-plt.title(country_code + " Total Contribution to SSP")
-plt.ylabel('Difference between SSP and Ground Truth')
-plt.xlabel('Year')
+
+plt.xticks(rotation=0, fontsize=font_scale * 12)
+plt.yticks(fontsize=font_scale * 12)
+plt.legend(loc='upper left', fontsize=font_scale * 12)
+# plt.title(country_code + " Total Contribution to SSP")
+plt.ylabel('Difference between SSP and Ground Truth', fontsize=font_scale * 12)
+plt.xlabel('date', fontsize=font_scale * 12)
 plt.xlim([np.min(dates), np.max(dates)])
 plt.ylim([0, temp_max])
-plt.savefig("plots/norm/totals/" + country_code + ".pdf")
+plt.savefig("plots/norm/totals/" + country_code + ".pdf", dpi=300)
