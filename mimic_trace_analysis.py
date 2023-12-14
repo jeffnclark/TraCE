@@ -2,19 +2,19 @@ from operator import index
 from sklearn import tree
 from sklearn.model_selection import train_test_split
 import pandas as pd
-import os
-import glob
-import sys
+# import os
+# import glob
+# import sys
 import numpy as np
-import pathlib
-import math
-import random
-import scipy
+# import pathlib
+# import math
+# import random
+# import scipy
 from helpers.funcs import *
 from helpers.plotters import *
 from sklearn.neural_network import MLPClassifier
-import dice_ml
-from dice_ml import Dice
+# import dice_ml
+# from dice_ml import Dice
 from sklearn.metrics import f1_score, accuracy_score
 import pickle
 import warnings
@@ -205,6 +205,8 @@ def initial_processing(filepath):
 
     return desired_df_data
 
+# Can ditch this whole function (for this example)
+
 
 def cf_generator(df, classifier):
     ''' Function to make the object for the generation of the counterfactuals
@@ -343,8 +345,9 @@ def generate_dice_cf_global(filepath,
     full_test_df = pd.concat([processed_x_test_norm, y_test['RFD']], axis=1)
     full_df = pd.concat([full_df, full_test_df], axis=0)
 
-    exp_genetic_mimic, features_to_vary = cf_generator(full_df, trained_model)
-    features_to_vary.remove('gender')
+    # Don't need the following two lines when using KDtree instead of DiCE
+    # exp_genetic_mimic, features_to_vary = cf_generator(full_df, trained_model)
+    # features_to_vary.remove('gender')
 
     # Includes the patient and stay ID of an individual
     positive_stay_id_patients = obtain_stay_id_individuals(
@@ -358,28 +361,30 @@ def generate_dice_cf_global(filepath,
     print(len(processed_x_test_norm))
 
     print('------------ INITIATING FOR POSITIVE OUTCOME(S) - RFD -------------')
-    positive_patient_scores, positive_times = calculate_traCE_scores(exp_genetic_mimic,
-                                                                     positive_stay_id_patients,
-                                                                     features_to_vary,
-                                                                     num_cases_to_assess=num_cases_to_assess,
-                                                                     num_cfs=num_cfs,
-                                                                     oracle_desirable_cf=oracle_desirable_cf,
-                                                                     label='pos', model=trained_model,
-                                                                     tree_1=tree_1, tree_2=tree_2,
-                                                                     ind_rfd_1=ind_rfd_1,
-                                                                     ind_rfd_2=ind_rfd_2)
+    positive_patient_scores, positive_times = calculate_traCE_scores(
+        # exp_genetic_mimic,
+        positive_stay_id_patients,
+        # features_to_vary,
+        num_cases_to_assess=num_cases_to_assess,
+        num_cfs=num_cfs,
+        oracle_desirable_cf=oracle_desirable_cf,
+        label='pos', model=trained_model,
+        tree_1=tree_1, tree_2=tree_2,
+        ind_rfd_1=ind_rfd_1,
+        ind_rfd_2=ind_rfd_2)
     print('------------ INITIATING FOR NEGATIVE OUTCOME(S) - MORTALITY -------------')
-    negative_patient_scores, negative_times = calculate_traCE_scores(exp_genetic_mimic,
-                                                                     negative_stay_id_patients,
-                                                                     features_to_vary,
-                                                                     num_cases_to_assess=num_cases_to_assess,
-                                                                     num_cfs=num_cfs,
-                                                                     oracle_desirable_cf=oracle_desirable_cf,
-                                                                     label='neg',
-                                                                     model=trained_model,
-                                                                     tree_1=tree_1, tree_2=tree_2,
-                                                                     ind_rfd_1=ind_rfd_1,
-                                                                     ind_rfd_2=ind_rfd_2)
+    negative_patient_scores, negative_times = calculate_traCE_scores(
+        # exp_genetic_mimic,
+        negative_stay_id_patients,
+        # features_to_vary,
+        num_cases_to_assess=num_cases_to_assess,
+        num_cfs=num_cfs,
+        oracle_desirable_cf=oracle_desirable_cf,
+        label='neg',
+        model=trained_model,
+        tree_1=tree_1, tree_2=tree_2,
+        ind_rfd_1=ind_rfd_1,
+        ind_rfd_2=ind_rfd_2)
 
     # Save the pickle files
     positive_patient_score_file_name = 'positive_patient_scores.pkl'
@@ -399,9 +404,9 @@ def generate_dice_cf_global(filepath,
 
 
 def calculate_traCE_scores(
-        dice_generator,
+        # dice_generator,
         patient_data,
-        features_to_vary,
+        # features_to_vary,
         model,
         num_cases_to_assess=3,
         num_cfs=3,
@@ -414,9 +419,9 @@ def calculate_traCE_scores(
 ):
     '''
     Function used to generate the traCE scores
-    inputs: dice_generator: object used to generate the counterfactuals
+    inputs: #dice_generator: object used to generate the counterfactuals
             patient_data: dataframe of the patients (usually linked to certain class e.g all patients raedy to be discharged)
-            features_to_vary: features to vary to generate the counterfactuals using diCE
+            #features_to_vary: features to vary to generate the counterfactuals using diCE
 
             oracle_desirable_cf: utilises case's actual final timepoint as the desired counterfactual
             model: trained model to calculate prediction probabilities on
@@ -715,7 +720,7 @@ if __name__ == "__main__":
     positive_patient_info, negative_patient_info = generate_dice_cf_global(
         path,
         num_cases_to_assess=2,
-        num_cfs=3,
+        num_cfs=5,
         oracle_desirable_cf=False)
     print('--- Pos outcomes ---', positive_patient_info)
     print('--- Neg outcomes ---', negative_patient_info)
