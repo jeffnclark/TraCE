@@ -147,7 +147,8 @@ def train_classifier(filepath):
     accuracy_test_score = accuracy_score(
         balanced_y_test['RFD'], test_predictions)
 
-    print('train f1', f1_train_score, 'train accuracy', accuracy_train_score)
+    print('Model training complete. Metrics: train f1',
+          f1_train_score, 'train accuracy', accuracy_train_score)
     print('f1_test_score', f1_test_score, 'test accuracy', accuracy_test_score)
 
     # Evaluate classifer performance - original unbalanced test set
@@ -167,10 +168,21 @@ def generate_dice_cf_global(filepath,
                             num_cases_to_assess=3,
                             trace_lambda=0.9,
                             num_cfs=1,
-                            num_trace_stays=5,
                             oracle_desirable_cf=False,
                             ):
-    ''' Generate plot for a subset of the individuals'''
+    '''
+    Generate plot for a subset of the individuals
+
+    Inputs:
+        filepath
+        num_cases_to_assess: How many stay_ids to process
+        trace_lambda: Weighting between angle and proximity to counterfactual
+        num_cfs: Number of counterfactual examples to compute TraCE against, for each positive and negative
+        oracle_desirable_cf: If wanting to use the patient's own final timepoint as the counterfactual
+
+    Returns:
+        TraCE scores
+    '''
     trained_model, processed_balanced_x_train_norm, balanced_y_train, processed_x_test_norm, y_test, tree_1, tree_2, ind_rfd_1, ind_rfd_2 = train_classifier(
         filepath)
     # Join the labels to the data
@@ -195,7 +207,7 @@ def generate_dice_cf_global(filepath,
     print(len(y_test))
     print(len(processed_x_test_norm))
 
-    print('------------ INITIATING FOR POSITIVE OUTCOME(S) - RFD -------------')
+    print('------------ INITIATING FOR POSITIVE OUTCOME(S) - SUCCESSFUL DISCHARGE TO HOME -------------')
     positive_patient_scores, positive_times = calculate_TraCE_scores(
         positive_stay_id_patients,
         num_cases_to_assess=num_cases_to_assess,
@@ -274,7 +286,6 @@ def calculate_TraCE_scores(
     patient_scores_obtained = 0
     def test_func(a): return trace_lambda
     for value, (groupStayID, groupData) in enumerate(patient_data_groups):
-        print('Number of patient scores obtained', patient_scores_obtained)
         if patient_scores_obtained >= num_cases_to_assess:
             break
 
@@ -291,19 +302,6 @@ def calculate_TraCE_scores(
         nrfd_prob = prediction_probabilities[:, 0]
         rfd_prob = prediction_probabilities[:, 1]
         mortality_prob = prediction_probabilities[:, 2]
-
-        # plot probabilities
-        plt.plot(nrfd_prob, label='NRFD', color='m')
-        plt.plot(rfd_prob, label='RFD', color='blue')
-        plt.plot(mortality_prob, label='Mortality', color='orange')
-        plt.xlabel('ICU Stay Timepoint')
-        plt.ylabel('Probability')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(
-            f'plots/plot_patient_{patient_scores_obtained}_{label}_probs.pdf')
-        plt.show(block=False)
-        plt.close('all')
 
         # Get the counterfactuals for the positive and the negative data
         positive_cf_dist, positive_cf_ind = tree_1.query(groupData, k=num_cfs)
@@ -329,31 +327,13 @@ def calculate_TraCE_scores(
 
             if sum(xt-xt1) == 0:
                 pass
-                # Or if you prefer, if there is no change between timepoints, set TraCE score as 0
-                '''
-                positive_score_value = 0.0
-                negative_score_value = 0.0
-                score_value = 0.0
-                score_values.append(score_value)
-                desirable_cf_scores.append(positive_score_value)
-                undesirable_cf_scores.append(negative_score_value)
-                times.append(normalized_hours[i])
-                '''
 
             else:
                 # Get the positive cf and the negative cf to calculate the score
                 # Checks whether a counterfactual is obtained or not
                 if positive_cf_ind[i] is None or negative_cf_ind[i] is None:
                     pass
-                    '''
-                    positive_score_value = 0.0
-                    negative_score_value = 0.0
-                    score_value = 0.0
-                    score_values.append(score_value)
-                    desirable_cf_scores.append(positive_score_value)
-                    undesirable_cf_scores.append(negative_score_value)
-                    times.append(normalized_hours[i])
-                    '''
+
                 else:
                     # Option to use actual patient outcome as positive_cf or not
                     if oracle_desirable_cf:
@@ -409,13 +389,13 @@ def calculate_TraCE_scores(
                             negative_score_value = negative_score_value / num_neg
 
                     else:
+                        # Desirable CFE component
                         positive_score_value = score(
                             xt, xt1, x_prime, func=test_func)
+
+                        # Undesirable CFE component
                         negative_score_value = score(
                             xt, xt1, x_star, func=test_func)
-
-                    # print('Desirable CF component:', positive_score_value)
-                    # print('Undesirable CF component:', negative_score_value)
 
                     score_value = (positive_score_value -
                                    negative_score_value) / 2
@@ -437,7 +417,6 @@ def calculate_TraCE_scores(
                     # Then for all later points
                     model_prediction_probability = model.predict_proba(
                         xt1.reshape(1, -1))
-                    print('****', model_prediction_probability)
                     nrfd_probs.append(model_prediction_probability[0][0])
                     rfd_probs.append(model_prediction_probability[0][1])
                     mortality_probs.append(model_prediction_probability[0][2])
@@ -471,8 +450,6 @@ def calculate_TraCE_scores(
             plt.show(block=False)
             plt.close('all')
 
-            print('*** PROBS ***', nrfd_probs)
-
             # plot probabilities
             plt.plot(nrfd_probs, label='NRFD', color='m')
             plt.plot(rfd_probs, label='RFD', color='blue')
@@ -482,11 +459,13 @@ def calculate_TraCE_scores(
             plt.legend()
             plt.tight_layout()
             plt.savefig(
-                f'plots/updated_plot_patient_{patient_scores_obtained}_{label}_probs.pdf')
+                f'plots/plot_patient_{patient_scores_obtained}_{label}_probs.pdf')
             plt.show(block=False)
             plt.close('all')
 
             patient_scores_obtained += 1
+            print(
+                f'Patient scores obtained: {patient_scores_obtained} / {num_cases_to_assess}')
 
     return collated_scores, collated_times
 
@@ -544,15 +523,6 @@ def analysis(filename,
         full_std_score = np.std(patient_means)
         final_timepoint_mean = np.mean(final_timepoints)
         final_timepoint_std = np.std(final_timepoints)
-
-        print(
-            f'Across all hospital stays, mean TraCE: {full_mean_score}, SD: {full_std_score}')
-        print('Final timepoint mean', final_timepoint_mean)
-        print('Final timepoint std', final_timepoint_std)
-        print('Index of max:', max(patient_means),
-              patient_means.index(max(patient_means)))
-        print('Index of min:', min(patient_means),
-              patient_means.index(min(patient_means)))
 
     return full_mean_score, full_std_score
 
