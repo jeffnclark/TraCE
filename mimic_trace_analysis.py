@@ -85,8 +85,6 @@ def obtain_stay_id_individuals(
     print('print number of timepoints per stay_id in data file:',
           full_test_df_stay_id_data['stay_id'].value_counts())
 
-    patient_details = full_test_df_stay_id_data[full_test_df_stay_id_data['stay_id'] == 39240078.0]
-
     return full_test_df_stay_id_data
 
 
@@ -118,7 +116,7 @@ def train_classifier(filepath):
     # Normalize the data
     x_train_norm, df_mean, df_std = normalize_data(x_train)
     x_test_norm = (x_test-df_mean)/df_std
-    full_norm = (filtered_df_data-df_mean)/df_std
+    # full_norm = (filtered_df_data-df_mean)/df_std # DEL?
 
     # for KDTree
     ind_rfd_1 = x_train_norm[y_train['RFD'] == 1]
@@ -175,10 +173,15 @@ def generate_dice_cf_global(filepath,
 
     Inputs:
         filepath
-        num_cases_to_assess: How many stay_ids to process
-        trace_lambda: Weighting between angle and proximity to counterfactual
-        num_cfs: Number of counterfactual examples to compute TraCE against, for each positive and negative
-        oracle_desirable_cf: If wanting to use the patient's own final timepoint as the counterfactual
+        num_cases_to_assess:
+            How many stay_ids to process
+        trace_lambda:
+            Weighting between angle and proximity to counterfactual
+        num_cfs:
+            Number of counterfactual examples to compute TraCE against
+            (for both desirable and undesirable components)
+        oracle_desirable_cf:
+            If wanting to use the patient's own final timepoint as the counterfactual
 
     Returns:
         TraCE scores
@@ -207,7 +210,7 @@ def generate_dice_cf_global(filepath,
     print(len(y_test))
     print(len(processed_x_test_norm))
 
-    print('------------ INITIATING FOR POSITIVE OUTCOME(S) - SUCCESSFUL DISCHARGE TO HOME -------------')
+    print('--- INITIATING FOR POSITIVE OUTCOME(S) - SUCCESSFUL DISCHARGE TO HOME ---')
     positive_patient_scores, positive_times = calculate_TraCE_scores(
         positive_stay_id_patients,
         num_cases_to_assess=num_cases_to_assess,
@@ -282,7 +285,6 @@ def calculate_TraCE_scores(
 
     collated_scores = []
     collated_times = []
-    outcome_predictions = []
     patient_scores_obtained = 0
     def test_func(a): return trace_lambda
     for value, (groupStayID, groupData) in enumerate(patient_data_groups):
@@ -297,23 +299,15 @@ def calculate_TraCE_scores(
                        'RFD'], axis=1, inplace=True)
 
         trajectory = groupData.to_numpy()
-        prediction_probabilities = model.predict_proba(trajectory)
-
-        nrfd_prob = prediction_probabilities[:, 0]
-        rfd_prob = prediction_probabilities[:, 1]
-        mortality_prob = prediction_probabilities[:, 2]
 
         # Get the counterfactuals for the positive and the negative data
         positive_cf_dist, positive_cf_ind = tree_1.query(groupData, k=num_cfs)
-        positive_cf = ind_rfd_1.iloc[positive_cf_ind[0]]
         negative_cf_dist, negative_cf_ind = tree_2.query(groupData, k=num_cfs)
-        negative_cf = ind_rfd_2.iloc[negative_cf_ind[0]]
 
         factual = trajectory[:]
         score_values = []
         desirable_cf_scores = []
         undesirable_cf_scores = []
-        prediction_values = []
         nrfd_probs = []
         rfd_probs = []
         mortality_probs = []
@@ -324,6 +318,16 @@ def calculate_TraCE_scores(
             # Get the initial point factual and the next point factual
             xt = factual[i, :]
             xt1 = factual[i + 1, :]
+
+            # Calculate the model probability
+            # First for the initial timepoint (xt at timepoint 0), later capture it for xt1
+            if i == 0:
+                model_prediction_probability = model.predict_proba(
+                    xt.reshape(1, -1))
+                nrfd_probs.append(model_prediction_probability[0][0])
+                rfd_probs.append(model_prediction_probability[0][1])
+                mortality_probs.append(
+                    model_prediction_probability[0][2])
 
             if sum(xt-xt1) == 0:
                 pass
@@ -405,16 +409,6 @@ def calculate_TraCE_scores(
                     times.append(normalized_hours[i])
 
                     # Also calculate the model probability
-                    # First for the initial timepoint
-                    if i == 0:
-                        model_prediction_probability = model.predict_proba(
-                            xt.reshape(1, -1))
-                        nrfd_probs.append(model_prediction_probability[0][0])
-                        rfd_probs.append(model_prediction_probability[0][1])
-                        mortality_probs.append(
-                            model_prediction_probability[0][2])
-
-                    # Then for all later points
                     model_prediction_probability = model.predict_proba(
                         xt1.reshape(1, -1))
                     nrfd_probs.append(model_prediction_probability[0][0])
@@ -513,18 +507,13 @@ def analysis(filename,
         final_timepoints.append(sublist[-1:])
 
     if cumulative:
-        full_sum = np.sum(np.concatenate(cum_sum_list))
         full_std = np.std(np.concatenate(cum_sum_list))
         full_mean = np.mean(np.concatenate(cum_sum_list))
+        return full_mean, full_std
     else:
-        full_sum = np.sum(np.concatenate(scores))
-        full_std = np.std(np.concatenate(scores))
         full_mean_score = np.mean(patient_means)
         full_std_score = np.std(patient_means)
-        final_timepoint_mean = np.mean(final_timepoints)
-        final_timepoint_std = np.std(final_timepoints)
-
-    return full_mean_score, full_std_score
+        return full_mean_score, full_std_score
 
 
 if __name__ == "__main__":
@@ -532,7 +521,7 @@ if __name__ == "__main__":
     positive_patient_info, negative_patient_info = generate_dice_cf_global(
         path,
         trace_lambda=0.9,
-        num_cases_to_assess=2,
+        num_cases_to_assess=10,
         num_cfs=3,
         oracle_desirable_cf=False)
     print('--- Pos outcomes ---', positive_patient_info)
