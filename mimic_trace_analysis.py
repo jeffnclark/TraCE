@@ -1,5 +1,5 @@
-# from operator import index
-# from sklearn import tree
+from tqdm import tqdm
+from time import sleep
 import pickle
 import warnings
 import pandas as pd
@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.neighbors import KDTree
+
 
 from helpers.funcs import *
 from helpers.plotters import *
@@ -65,25 +66,11 @@ def obtain_stay_id_individuals(
     # Filtering the stay IDs for the data of interest based off the RFD flag
     positive_stay_id = labels[labels['RFD'] == label_value]
 
-    # print('all', len(positive_stay_id))
-    # print('unique', len(positive_stay_id['stay_id'].unique()))
-
     full_test_df_stay_id = pd.concat(
         [data, labels[['RFD', 'stay_id', 'hours_since_admission']]], axis=1)
     # Based on chatgpt
     full_test_df_stay_id_data = full_test_df_stay_id[full_test_df_stay_id['stay_id'].isin(
         positive_stay_id['stay_id'])]
-
-    # print('all labels', len(labels))
-    # print(labels['RFD'].value_counts())
-    print(f'In func for label {label_value}', len(
-        positive_stay_id['stay_id'].unique()))
-
-    print('print number of times each stay_id appears:',
-          positive_stay_id['stay_id'].value_counts())
-
-    print('print number of timepoints per stay_id in data file:',
-          full_test_df_stay_id_data['stay_id'].value_counts())
 
     return full_test_df_stay_id_data
 
@@ -145,9 +132,10 @@ def train_classifier(filepath):
     accuracy_test_score = accuracy_score(
         balanced_y_test['RFD'], test_predictions)
 
-    print('Model training complete. Metrics: train f1',
+    print('Model training complete. Metrics: training set f1',
           f1_train_score, 'train accuracy', accuracy_train_score)
-    print('f1_test_score', f1_test_score, 'test accuracy', accuracy_test_score)
+    print('Balanced testing set f1', f1_test_score,
+          ', accuracy', accuracy_test_score)
 
     # Evaluate classifer performance - original unbalanced test set
     unbalanced_test_predictions = classifier.predict(x_test_norm)
@@ -156,8 +144,8 @@ def train_classifier(filepath):
     accuracy_unbalanced_test_score = accuracy_score(
         y_test['RFD'], unbalanced_test_predictions)
 
-    print('f1_unbalanced_test_score', f1_unbalanced_test_score,
-          'unbalanced_test accuracy', accuracy_unbalanced_test_score)
+    print('Unbalanced testing set f1', f1_unbalanced_test_score,
+          ', accuracy', accuracy_unbalanced_test_score)
 
     return classifier, balanced_x_train_norm, balanced_y_train, x_test_norm, y_test, tree_1, tree_2, ind_rfd_1, ind_rfd_2
 
@@ -204,13 +192,10 @@ def generate_dice_cf_global(filepath,
     negative_stay_id_patients = obtain_stay_id_individuals(
         processed_x_test_norm, y_test, 2)
 
-    print('------*******-------')
-    print('*****POSITIVE', len(positive_stay_id_patients['stay_id'].unique()))
-    print('*****NEGATIVE', len(negative_stay_id_patients['stay_id'].unique()))
-    print(len(y_test))
-    print(len(processed_x_test_norm))
-
     print('--- INITIATING FOR POSITIVE OUTCOME(S) - SUCCESSFUL DISCHARGE TO HOME ---')
+    print(
+        f'Analysing  {num_cases_to_assess}/{len(positive_stay_id_patients.stay_id.unique())} available cases')
+
     positive_patient_scores, positive_times = calculate_TraCE_scores(
         positive_stay_id_patients,
         num_cases_to_assess=num_cases_to_assess,
@@ -222,6 +207,9 @@ def generate_dice_cf_global(filepath,
         ind_rfd_1=ind_rfd_1,
         ind_rfd_2=ind_rfd_2)
     print('------------ INITIATING FOR NEGATIVE OUTCOME(S) - MORTALITY -------------')
+    print(
+        f'Analysing  {num_cases_to_assess}/{len(negative_stay_id_patients.stay_id.unique())} available cases')
+
     negative_patient_scores, negative_times = calculate_TraCE_scores(
         negative_stay_id_patients,
         num_cases_to_assess=num_cases_to_assess,
@@ -272,7 +260,7 @@ def calculate_TraCE_scores(
         model: trained model to calculate prediction probabilities
         trace_lambda: weighting between angle (R1) and proximity (R2)
         num_cases_to_assess: randomly selecting this number of cases from the test set
-        oracle_desirable_cf: utilises case's actual final timepoint as the desired counterfactual
+        oracle_desirable_cf: utilises case's actual final timepoint as the desired counterfactual, not recommended beyond development
         tree_1: KDTree for class 1 (successful discharge)
         tree_2: KDTree fOR class 2 (mortality)
         ind_rfd_1: corpus of known outcomes from the training set for class 1 (successful discharge)
@@ -298,13 +286,12 @@ def calculate_TraCE_scores(
         groupData.drop(['stay_id', 'hours_since_admission',
                        'RFD'], axis=1, inplace=True)
 
-        trajectory = groupData.to_numpy()
+        factual = groupData.to_numpy()
 
-        # Get the counterfactuals for the positive and the negative data
+        # Get the desirable and undesirable counterfactuals for the current time point
         positive_cf_dist, positive_cf_ind = tree_1.query(groupData, k=num_cfs)
         negative_cf_dist, negative_cf_ind = tree_2.query(groupData, k=num_cfs)
 
-        factual = trajectory[:]
         score_values = []
         desirable_cf_scores = []
         undesirable_cf_scores = []
@@ -330,6 +317,7 @@ def calculate_TraCE_scores(
                     model_prediction_probability[0][2])
 
             if sum(xt-xt1) == 0:
+                # If there is no change in any feature values between succcesive time points, don't calculate TraCE
                 pass
 
             else:
@@ -341,7 +329,7 @@ def calculate_TraCE_scores(
                 else:
                     # Option to use actual patient outcome as positive_cf or not
                     if oracle_desirable_cf:
-                        x_prime = trajectory[-1:][0].astype(float)
+                        x_prime = factual[-1:][0].astype(float)
                     else:
                         x_prime = ind_rfd_1.iloc[positive_cf_ind[i]].to_numpy()
                         x_prime = x_prime.astype(float)
@@ -424,6 +412,9 @@ def calculate_TraCE_scores(
             # offset x range to begin at 1
             # to reflect TraCE method (measure timepoint and preceeding one)
             x_range = range(1, len(desirable_cf_scores) + 1)
+            plt.style.use('seaborn-paper')
+            plt.rcParams["axes.spines.right"] = False
+            plt.rcParams["axes.spines.top"] = False
             plt.plot(x_range, desirable_cf_scores,
                      label=f'Desirable: {np.mean(desirable_cf_scores):.2f}')
             plt.plot(x_range, undesirable_cf_scores,
@@ -431,8 +422,12 @@ def calculate_TraCE_scores(
             plt.plot(x_range, score_values,
                      label=f'Total TraCE: {np.mean(score_values):.2f}')
             # plt.xticks(x_range)
+            # Add horizontal dashed line at 0
+            plt.axhline(0, linestyle='--', c='black')
             plt.xlabel('ICU Stay Timepoint')
             plt.ylabel('TraCE Score')
+            plt.xlim(0, len(desirable_cf_scores) + 1)
+            plt.ylim(-1, 1)
             plt.tight_layout()
             plt.legend()
             if oracle_desirable_cf:
@@ -450,6 +445,8 @@ def calculate_TraCE_scores(
             plt.plot(mortality_probs, label='Mortality', color='orange')
             plt.xlabel('ICU Stay Timepoint')
             plt.ylabel('Probability')
+            plt.xlim(0, len(nrfd_probs) + 1)
+            plt.ylim(0, 1)
             plt.legend()
             plt.tight_layout()
             plt.savefig(
@@ -465,7 +462,8 @@ def calculate_TraCE_scores(
 
 
 def analysis(filename,
-             cumulative=False):
+             cumulative=False
+             ):
     '''
     Function used to calculate the:
     mean, sum and standard deviation of the scores (in total as well as per patient)
@@ -521,8 +519,9 @@ if __name__ == "__main__":
     positive_patient_info, negative_patient_info = generate_dice_cf_global(
         path,
         trace_lambda=0.9,
-        num_cases_to_assess=10,
+        num_cases_to_assess=2,
         num_cfs=3,
         oracle_desirable_cf=False)
-    print('--- Pos outcomes ---', positive_patient_info)
-    print('--- Neg outcomes ---', negative_patient_info)
+    print('-------------- Processing complete, summary: --------------')
+    print('--- Pos outcomes --- mean, std', positive_patient_info)
+    print('--- Neg outcomes --- mean, std', negative_patient_info)

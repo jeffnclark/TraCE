@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.special import gamma, factorial
+from scipy.special import gamma
 import pandas as pd
 
 
@@ -144,20 +144,20 @@ def score1(x0, x1, x_prime, x_star=None, method='dot'):
         n = 0
         for xp in x_prime:
             v_prime = vec(x0, xp)
-            p_test1 = (np.dot(v, v_prime) /
-                       (np.linalg.norm(v_prime) * np.linalg.norm(v)))
-            p_test2 = (1 - np.exp(-np.linalg.norm(v)))
-            p_test3 = (np.exp(-np.linalg.norm(x1 - xp)))
+            # p_test1 = (np.dot(v, v_prime) /
+            #           (np.linalg.norm(v_prime) * np.linalg.norm(v))) # DEL?
+            # p_test2 = (1 - np.exp(-np.linalg.norm(v))) # DEL?
+            # p_test3 = (np.exp(-np.linalg.norm(x1 - xp))) # DEL?
             temp = (np.dot(v, v_prime) / (np.linalg.norm(v_prime) * np.linalg.norm(v))) * (
                 1 - np.exp(-np.linalg.norm(v))) * (np.exp(-np.linalg.norm(x1 - xp)))
             S += temp
             n += 1
         for xs in x_star:
             v_star = vec(x0, xs)
-            s_test1 = (np.dot(v, v_star) /
-                       (np.linalg.norm(v_star) * np.linalg.norm(v)))
-            s_test2 = (1 - np.exp(-np.linalg.norm(v)))
-            s_test3 = (np.exp(-np.linalg.norm(x1 - xs)))
+            # s_test1 = (np.dot(v, v_star) /
+            #           (np.linalg.norm(v_star) * np.linalg.norm(v))) # DEL?
+            # s_test2 = (1 - np.exp(-np.linalg.norm(v))) # DEL?
+            # s_test3 = (np.exp(-np.linalg.norm(x1 - xs))) # DEL?
             temp = (np.dot(v, v_star) / (np.linalg.norm(v_star) * np.linalg.norm(v))) * (
                 1 - np.exp(-np.linalg.norm(v))) * (np.exp(-np.linalg.norm(x1 - xs)))
             S -= temp
@@ -183,131 +183,10 @@ def score1(x0, x1, x_prime, x_star=None, method='dot'):
     return S
 
 
-def news(x):
-    """
-    Calculates the NEWS score, whilst capturing the good counterfactual and bad counterfactual in parallel
-    :param x: vector of NEWS values for all features
-    :return: news score, good counterfactual x_prime, bad counterfactual x_star
-    """
-    # set up values for calculation
-    score = 0
-    x_prime = np.zeros(len(x))
-    x_star = np.zeros(len(x))
-    # perfect values from mean of 0 score
-    x_prime[0] = 16  # respiration rate
-    x_prime[1] = 100  # oxygen saturation levels
-    x_prime[2] = 0  # any supplemental oxygen
-    x_prime[3] = 37.05  # temperature
-    x_prime[4] = 165  # blood pressure
-    x_prime[5] = 70.5  # heart rate
-    x_prime[6] = 0  # consciousness
-
-    # calculate respiratory score
-    if x[0] <= x_prime[0]:
-        x_star[0] = 12
-    else:
-        x_star[0] = 20
-    if x[0] <= 11:
-        score += 1
-        x_star[0] = 8
-    if x[0] <= 8:
-        score += 2
-        x_star[0] = x[0] - 1
-    if x[0] >= 21:
-        score += 2
-        x_star[0] = 25
-    if x[0] >= 25:
-        score += 1
-        x_star[0] = x[0]
-
-    # calculate oxygen saturation score
-    if x[1] >= 96:
-        x_star[1] = 95
-    if x[1] <= 95:
-        score += 1
-        x_star[1] = 93
-    if x[1] <= 93:
-        score += 1
-        x_star[1] = 91
-    if x[1] <= 91:
-        score += 1
-        x_star[1] = x[1]
-
-    # calculate supplemental oxygen score (1 on supplementary oxygen, 0 not)
-    x_star[2] = 1
-    if x[2] == 1:
-        score += 2
-
-    # calculate temperature score
-    if x[3] <= x_prime[3]:
-        x_star[3] = 36
-    else:
-        x_star[3] = 38.1
-    if x[3] <= 36:
-        score += 1
-        x_star[3] = 35
-    if x[3] <= 35:
-        score += 2
-        x_star[3] = x[3] - 1
-    if x[3] >= 38.1:
-        score += 1
-        x_star[3] = 39.1
-    if x[3] >= 39.1:
-        score += 1
-        x_star[3] = x[3]
-
-    # calculate blood pressure score
-    if x[4] <= x_prime[4]:
-        x_star[4] = 110
-    else:
-        x_star[4] = 220
-    if x[4] <= 110:
-        score += 1
-        x_star[4] = 100
-    if x[4] <= 100:
-        score += 1
-        x_star[4] = 90
-    if x[4] <= 90:
-        score += 1
-        x_star[4] = x[4]
-    if x[4] >= 220:
-        score += 3
-        x_star[4] = x[4]
-
-    # calculate heart rate score
-    if x[5] <= x_prime[5]:
-        x_star[5] = 50
-    else:
-        x_star[5] = 91
-    if x[5] <= 50:
-        score += 1
-        x_star[5] = 40
-    if x[5] <= 40:
-        score += 1
-        x_star[5] = x[5]
-    if x[5] >= 91:
-        score += 1
-        x_star[5] = 111
-    if x[5] >= 111:
-        score += 1
-        x_star[5] = 131
-    if x[5] >= 131:
-        score += 1
-        x_star[5] = x[0]
-
-    # calculate level of consciousness score (1 unconscious, 0 conscious)
-    x_star[6] = 1
-    if x[6] == 1:
-        score += 3
-
-    return score, x_prime, x_star
-
-
 def cumulative_average_trace(scores):
     '''
     Calculate cumulative average TraCE score
-    The final value is an average of the entire trajectory
-
+    Return the cumulative average of the entire trajectory
     '''
     df = pd.DataFrame(scores, columns=['score'])
     return df['score'].expanding().mean().to_numpy()
