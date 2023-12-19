@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import f1_score, accuracy_score
 from sklearn.neighbors import KDTree
-
+from scipy.stats import ttest_ind
 
 from helpers.funcs import *
 from helpers.plotters import *
@@ -232,10 +232,15 @@ def generate_dice_cf_global(filepath,
         pickle.dump(negative_patient_scores, file)
 
     # Obtains the values of interest for processing
-    positive_mean_score, positive_std_score = analysis(
+    positive_mean_score, positive_std_score, pos_outcome_means = analysis(
         positive_patient_score_file_name, cumulative=False)
-    negative_mean_score, negative_std_score = analysis(
+    negative_mean_score, negative_std_score, neg_outcome_means = analysis(
         negative_patient_score_file_name, cumulative=False)
+
+    # perform Welch's t-test
+    print("Welch's T test outcome:", ttest_ind(
+        pos_outcome_means, neg_outcome_means, equal_var=False))
+
     return (positive_mean_score, positive_std_score), (negative_mean_score, negative_std_score)
 
 
@@ -426,7 +431,7 @@ def calculate_TraCE_scores(
             plt.axhline(0, linestyle='--', c='black')
             plt.xlabel('ICU Stay Timepoint')
             plt.ylabel('TraCE Score')
-            plt.xlim(0, len(desirable_cf_scores) + 1)
+            plt.xlim(0, len(desirable_cf_scores)+1)
             plt.ylim(-1, 1)
             plt.tight_layout()
             plt.legend()
@@ -445,7 +450,7 @@ def calculate_TraCE_scores(
             plt.plot(mortality_probs, label='Mortality', color='orange')
             plt.xlabel('ICU Stay Timepoint')
             plt.ylabel('Probability')
-            plt.xlim(0, len(nrfd_probs) + 1)
+            plt.xlim(0, len(nrfd_probs))
             plt.ylim(0, 1)
             plt.legend()
             plt.tight_layout()
@@ -511,7 +516,7 @@ def analysis(filename,
     else:
         full_mean_score = np.mean(patient_means)
         full_std_score = np.std(patient_means)
-        return full_mean_score, full_std_score
+        return full_mean_score, full_std_score, patient_means
 
 
 if __name__ == "__main__":
@@ -519,8 +524,8 @@ if __name__ == "__main__":
     positive_patient_info, negative_patient_info = generate_dice_cf_global(
         path,
         trace_lambda=0.9,
-        num_cases_to_assess=2,
-        num_cfs=3,
+        num_cases_to_assess=10,
+        num_cfs=2,
         oracle_desirable_cf=False)
     print('-------------- Processing complete, summary: --------------')
     print('--- Pos outcomes --- mean, std', positive_patient_info)
