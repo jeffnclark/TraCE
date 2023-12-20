@@ -1,5 +1,3 @@
-from tqdm import tqdm
-from time import sleep
 import pickle
 import warnings
 import pandas as pd
@@ -238,7 +236,7 @@ def generate_dice_cf_global(filepath,
         negative_patient_score_file_name, cumulative=False)
 
     # perform Welch's t-test
-    print("Welch's T test outcome:", ttest_ind(
+    print("Welch's t-test outcome:", ttest_ind(
         pos_outcome_means, neg_outcome_means, equal_var=False))
 
     return (positive_mean_score, positive_std_score), (negative_mean_score, negative_std_score)
