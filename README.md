@@ -1,23 +1,55 @@
-# TraCE: Trajectory Counterfactual Scores
-## Idea
+[![arXiv](https://img.shields.io/badge/arXiv-2306.02786-red.svg)](https://arxiv.org/abs/2309.15965)
 
-- Counterfactual explanations, and their paths, can provide a useful indication of what should
-change to alter a classification outcome
-- For time series tasks it may be useful to compare the actual path being taken with the ideal one
-as suggested by counterfactuals to give a sense as to if that indiividual is moving in a broadly positive
-direction or not
-- Concretely: For a given time point, X0, a quantification of similarity between the actual path
-taken to the next timepoint, X1, and the ‘best’ path (i.e. the counterfactual), X′
-0, may be a
-useful measure to indicate ‘quality’ of the current trajectory. For instance, for a patient in a
-hospital ward and assessing how they are responding to treatment and if they are improving or
-further deteriorating.
-- In comparing these paths the difference in both direction and magnitude intuitively seem impor-
-tant. A potential scoring metrics could utilise existing methods, such as:
-    - L2 distance for magnitude
-    - Cosine similarity for direction, which is already handily scaled to -1 to 1
-- Using the cosine similarity, or combined with L2 distance or other values, into a single metric
-may be a neat solution whereby the resulting score would mean:
-    - Large positive: strong progress towards boundary and opposite class, i.e. improvement
-    - Near 0: making no progress, potentially moving parallel to decision boundary
-    - Large negative: clearly moving in wrong direction
+To do:
+[ ] List requirements
+[ ] Create notebook example
+[ ] Incorporate SSP example
+
+# TraCE: Trajectory Counterfactual Scores
+
+This repository hosts source code, and implementation for case studies, for [`TraCE` as introduced at NLDL 2024](https://arxiv.org/abs/2309.15965).
+
+## TLDR
+
+Use TraCE scores to track progress in high-dimensionality multi-step processes down to an easily interpretable single score by measuring alignment in true trajectory against theoretical trajectories towards counterfactuals.
+
+<p style="text-align:center">
+<img src="plots/figure_2_square.png" width="450">
+</p>
+
+
+## Abstract
+
+Counterfactual explanations, and their associated algorithmic recourse, are typically leveraged to understand and explain predictions of individual instances coming from a black-box classifier. In this paper, we propose to extend the use of counterfactuals to evaluate progress in sequential decision making tasks. To this end, we introduce a model-agnostic modular framework, TraCE (Trajectory Counterfactual Explanation) scores, to distill and condense progress in highly complex scenarios into a single value. We demonstrate TraCE’s utility by showcasing its main properties in two case studies spanning healthcare and climate change.
+
+
+## Requirments
+
+* Numpy
+* Scikit-learn...
+
+Optionally: Your choice of counterfactual example generator. In the demo notebook we use DiCE but the `TraCE` framework can be applied to counterfactuals from a variety of sources, as described below.
+
+## Intended use
+TraCE is a model-agnostic framework which can be applied across domains and interfaced with existing tools. Alongside a series of factual datapoints, users are required to provide counterfactual reference point(s) to calculate TraCE scores against. These reference points can take several forms, including:
+
+* Model-generated counterfactual explanations using any existing counterfactual generation method
+* Predetermined landmarks, such as those guided by experts
+* Corpus of historical values
+* Input from other scientific studies
+
+Users can provide single or multiple sets of counterfactual reference point(s).
+
+In our paper we demonstrate different possible implementations of TraCE:
+1. Hospital case study, utilising TraCE scores to track progress for patients in an intensive care unit. In this example we provide TraCE with both desirable (successfully discharged) and undersirable (in-hospital mortality) counterfactuals, determined from a corpus of known outcome labels from the training set.
+2. Sustainable development case study, utilising TraCE scores to evaluate countries' historical development against established pathways. In this example we provide TraCE with expert-derived pathways to track alignment against.
+
+## Citation
+```
+@article{clark2023trace,
+  title={TraCE: Trajectory Counterfactual Explanation Scores},
+  author={Clark, Jeffrey N and Small, Edward A and Keshtmand, Nawid and Wan, Michelle WL and Mayoral, Elena Fillola and Werner, Enrico and Bourdeaux, Christopher P and Santos-Rodriguez, Raul},
+  journal={arXiv preprint arXiv:2309.15965},
+  year={2023}
+}
+```
