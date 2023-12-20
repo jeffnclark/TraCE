@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.special import gamma, factorial
+from scipy.special import gamma
 import pandas as pd
 
 
@@ -136,9 +136,6 @@ def score1(x0, x1, x_prime, x_star=None, method='dot'):
             norm_v = v / np.linalg.norm(v)
             length = np.sqrt(2 - 2 * theta)
             S = np.dot((norm_v_prime - norm_v_star) / length, norm_v)
-            # S1 = (np.dot(v, v_prime) / (np.linalg.norm(v) * np.linalg.norm(v_prime))) * (np.linalg.norm(v) / np.linalg.norm(v_prime))
-            # S2 = (np.dot(v, v_star) / (np.linalg.norm(v) * np.linalg.norm(v_star))) * (np.linalg.norm(v) / np.linalg.norm(v_star))
-            # S = (S1 - S2) / 2
 
     if method == 'avg':
         S = 0
@@ -147,20 +144,20 @@ def score1(x0, x1, x_prime, x_star=None, method='dot'):
         n = 0
         for xp in x_prime:
             v_prime = vec(x0, xp)
-            p_test1 = (np.dot(v, v_prime) /
-                       (np.linalg.norm(v_prime) * np.linalg.norm(v)))
-            p_test2 = (1 - np.exp(-np.linalg.norm(v)))
-            p_test3 = (np.exp(-np.linalg.norm(x1 - xp)))
+            # p_test1 = (np.dot(v, v_prime) /
+            #           (np.linalg.norm(v_prime) * np.linalg.norm(v))) # DEL?
+            # p_test2 = (1 - np.exp(-np.linalg.norm(v))) # DEL?
+            # p_test3 = (np.exp(-np.linalg.norm(x1 - xp))) # DEL?
             temp = (np.dot(v, v_prime) / (np.linalg.norm(v_prime) * np.linalg.norm(v))) * (
                 1 - np.exp(-np.linalg.norm(v))) * (np.exp(-np.linalg.norm(x1 - xp)))
             S += temp
             n += 1
         for xs in x_star:
             v_star = vec(x0, xs)
-            s_test1 = (np.dot(v, v_star) /
-                       (np.linalg.norm(v_star) * np.linalg.norm(v)))
-            s_test2 = (1 - np.exp(-np.linalg.norm(v)))
-            s_test3 = (np.exp(-np.linalg.norm(x1 - xs)))
+            # s_test1 = (np.dot(v, v_star) /
+            #           (np.linalg.norm(v_star) * np.linalg.norm(v))) # DEL?
+            # s_test2 = (1 - np.exp(-np.linalg.norm(v))) # DEL?
+            # s_test3 = (np.exp(-np.linalg.norm(x1 - xs))) # DEL?
             temp = (np.dot(v, v_star) / (np.linalg.norm(v_star) * np.linalg.norm(v))) * (
                 1 - np.exp(-np.linalg.norm(v))) * (np.exp(-np.linalg.norm(x1 - xs)))
             S -= temp
@@ -186,131 +183,88 @@ def score1(x0, x1, x_prime, x_star=None, method='dot'):
     return S
 
 
-def news(x):
-    """
-    Calculates the NEWS score, whislt capturing the good counterfactual and bad counterfactual in parallel
-    :param x: vector of NEWS values (resp. rate, ox. sat., ox. sup., temp., blood pres., hrt rt, consciousness)
-    :return: news score, good counterfactual x_prime, bad counterfactual x_star
-    """
-    # set up values for calculation
-    score = 0
-    x_prime = np.zeros(len(x))
-    x_star = np.zeros(len(x))
-    # perfect values from mean of 0 score
-    x_prime[0] = 16  # respiration rate
-    x_prime[1] = 100  # oxygen saturation levels
-    x_prime[2] = 0  # any supplemental oxygen
-    x_prime[3] = 37.05  # temperature
-    x_prime[4] = 165  # blood pressure
-    x_prime[5] = 70.5  # heart rate
-    x_prime[6] = 0  # consciousness
-
-    # calculate respiratory score
-    if x[0] <= x_prime[0]:
-        x_star[0] = 12
-    else:
-        x_star[0] = 20
-    if x[0] <= 11:
-        score += 1
-        x_star[0] = 8
-    if x[0] <= 8:
-        score += 2
-        x_star[0] = x[0] - 1
-    if x[0] >= 21:
-        score += 2
-        x_star[0] = 25
-    if x[0] >= 25:
-        score += 1
-        x_star[0] = x[0]
-
-    # calculate oxygen saturation score
-    if x[1] >= 96:
-        x_star[1] = 95
-    if x[1] <= 95:
-        score += 1
-        x_star[1] = 93
-    if x[1] <= 93:
-        score += 1
-        x_star[1] = 91
-    if x[1] <= 91:
-        score += 1
-        x_star[1] = x[1]
-
-    # calculate supplemental oxygen score (1 on supplementary oxygen, 0 not)
-    x_star[2] = 1
-    if x[2] == 1:
-        score += 2
-
-    # calculate temperature score
-    if x[3] <= x_prime[3]:
-        x_star[3] = 36
-    else:
-        x_star[3] = 38.1
-    if x[3] <= 36:
-        score += 1
-        x_star[3] = 35
-    if x[3] <= 35:
-        score += 2
-        x_star[3] = x[3] - 1
-    if x[3] >= 38.1:
-        score += 1
-        x_star[3] = 39.1
-    if x[3] >= 39.1:
-        score += 1
-        x_star[3] = x[3]
-
-    # calculate blood pressure score
-    if x[4] <= x_prime[4]:
-        x_star[4] = 110
-    else:
-        x_star[4] = 220
-    if x[4] <= 110:
-        score += 1
-        x_star[4] = 100
-    if x[4] <= 100:
-        score += 1
-        x_star[4] = 90
-    if x[4] <= 90:
-        score += 1
-        x_star[4] = x[4]
-    if x[4] >= 220:
-        score += 3
-        x_star[4] = x[4]
-
-    # calculate heart rate score
-    if x[5] <= x_prime[5]:
-        x_star[5] = 50
-    else:
-        x_star[5] = 91
-    if x[5] <= 50:
-        score += 1
-        x_star[5] = 40
-    if x[5] <= 40:
-        score += 1
-        x_star[5] = x[5]
-    if x[5] >= 91:
-        score += 1
-        x_star[5] = 111
-    if x[5] >= 111:
-        score += 1
-        x_star[5] = 131
-    if x[5] >= 131:
-        score += 1
-        x_star[5] = x[0]
-
-    # calculate level of consciousness score (1 unconscious, 0 conscious)
-    x_star[6] = 1
-    if x[6] == 1:
-        score += 3
-
-    return score, x_prime, x_star
-
-
 def cumulative_average_trace(scores):
     '''
     Calculate cumulative average TraCE score
-    The final value is an average of the entire trajectory
-
+    Return the cumulative average of the entire trajectory
     '''
     df = pd.DataFrame(scores, columns=['score'])
     return df['score'].expanding().mean().to_numpy()
+
+
+def normalize_data(df_data):
+    '''
+    function used to normalize the dataframe
+    input: df_data -  pd dataframe to be normalized
+    returns : normalized_df_data - dataframe after normalization
+    '''
+    # Calculate separate mean and standard deviation values
+    df_mean = df_data.mean()
+    df_std = df_data.std()
+    normalized_df_data = (df_data-df_mean)/df_std
+    return normalized_df_data, df_mean, df_std
+
+
+def remove_empty_rows(filepath):
+    '''
+    Function to get the data where there is the data with only the empty rows
+    CURRENTLY UNUSED
+    '''
+    df_data = pd.read_csv(filepath,
+                          header=0)
+
+    desired_variables = ['stay_id',
+                         'biocarbonate', 'bloodOxygen', 'bloodPressure', 'bun', 'creatinine',
+                         'fio2', 'haemoglobin', 'heartRate', 'motorGCS', 'eyeGCS',
+                         'potassium', 'respiratoryRate', 'sodium', 'Temperature [C]',
+                         'verbalGCS', 'age', 'gender',
+                         'hours_since_admission',
+                         'RFD']
+
+    # Obtain only the variables of interes
+    desired_df_data = df_data[desired_variables]
+    # Make sure to use desired_df_columnss for the len threshold
+    filtered_df_data = desired_df_data.dropna(
+        thresh=len(desired_df_data.columns))
+    concatenated = pd.concat([desired_df_data, filtered_df_data])
+    different_rows = concatenated.drop_duplicates(keep=False)
+    # Reset index of the resulting dataframe
+    different_rows.reset_index(drop=True, inplace=True)
+    return filtered_df_data, different_rows
+
+
+def balancing_classes(
+        data,
+        data_labels):
+    '''
+    Used to balance the data and the data labels
+    input: data - can be the data or the data labels which we want to obtain values of
+    data_labels- used to obtain the separate classes of interest
+    return: balanced_df_data - data which is balanced in terms of the different classes
+            balanced_df_labels - labels which is balanced in terms of the different classes
+    '''
+    # Separate the data into labels, an example here is the ready for discharge ICU case study
+    neutral_data = data[data_labels['RFD'] == 0]
+    positive_data = data[data_labels['RFD'] == 1]
+    negative_data = data[data_labels['RFD'] == 2]
+
+    # Get the minimum values
+    values = [len(neutral_data), len(negative_data), len(positive_data)]
+    min_value = min(values)
+    # Shorten the array based on the labels
+    neutral_data = neutral_data.head(min_value)
+    negative_data = negative_data.head(min_value)
+    positive_data = positive_data.head(min_value)
+
+    # Shorten the labels
+    neutral_labels = data_labels[data_labels['RFD'] == 0].head(min_value)
+    positive_labels = data_labels[data_labels['RFD'] == 1].head(min_value)
+    negative_labels = data_labels[data_labels['RFD'] == 2].head(min_value)
+
+    # Concatenate the data
+    balanced_df_data = pd.concat(
+        (neutral_data, negative_data, positive_data), axis=0)
+    balanced_df_labels = pd.concat(
+        (neutral_labels, negative_labels, positive_labels), axis=0)
+
+    return balanced_df_data, balanced_df_labels
