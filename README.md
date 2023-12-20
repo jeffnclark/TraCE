@@ -3,7 +3,7 @@
 To do:
 [ ] List requirements
 [ ] Create notebook example
-[ ] Incorporate SSP example
+[ ] Switch to Ed's updated TraCE plot
 
 # TraCE: Trajectory Counterfactual Scores
 

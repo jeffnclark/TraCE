@@ -1,3 +1,5 @@
 *.pdf
-*/__pycache__
 *.pkl
+*.csv
+
+*/__pycache__

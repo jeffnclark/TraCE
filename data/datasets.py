@@ -57,27 +57,3 @@ def load_dataset(dataset_name):
     dataset_df.rename(columns={"outcome": "y"}, inplace=True)
 
     return dataset_df
-
-
-def generate_expired(dataset_name, expired_fraction=0.05):
-    '''
-    Add a small number of expired (in-hospital mortality) labels to the currently binary task
-    Randomly sample and create new label, -1 = expired
-    '''
-    dataset_df = load_dataset(dataset_name)
-
-    dfupdate = dataset_df.sample(frac=expired_fraction)
-    dfupdate.y = -1
-    dataset_df.update(dfupdate)
-
-    return dataset_df
-
-
-def normalise_news(x):
-    temp = np.copy(x)
-    temp[0] = (x[0] - 8) / (25 - 8)
-    temp[1] = (x[1] - 91) / (100 - 91)
-    temp[3] = (x[3] - 35) / (39.1 - 35)
-    temp[4] = (x[4] - 90) / (220 - 90)
-    temp[5] = (x[5] - 40) / (131 - 40)
-    return x
