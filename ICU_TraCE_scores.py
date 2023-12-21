@@ -418,43 +418,57 @@ def calculate_TraCE_scores(
             # offset x range to begin at 1
             # to reflect TraCE method (measure timepoint and preceeding one)
             x_range = range(1, len(desirable_cf_scores) + 1)
+            # plt.style.use('seaborn-v0_8-paper')
             plt.style.use('seaborn-paper')
             fig, ax = plt.subplots(2, sharex=True)
+            label_size = 10
             plt.rcParams["axes.spines.right"] = False
             plt.rcParams["axes.spines.top"] = False
+            ax[0].tick_params(axis='y' , which='major', labelsize=label_size)
             ax[0].plot(x_range, desirable_cf_scores,
-                     label=f'Desirable: {np.mean(desirable_cf_scores):.2f}')
+                       label=f'Desirable: {np.mean(desirable_cf_scores):.2f}')
             ax[0].plot(x_range, undesirable_cf_scores,
-                     label=f'Undesirable: {np.mean(undesirable_cf_scores):.2f} ')
+                       label=f'Undesirable: {np.mean(undesirable_cf_scores):.2f} ')
             ax[0].plot(x_range, score_values,
-                     label=f'Total TraCE: {np.mean(score_values):.2f}')
+                       label=f'Total TraCE: {np.mean(score_values):.2f}')
             # plt.xticks(x_range)
             # Add horizontal dashed line at 0
             ax[0].axhline(0, linestyle='--', c='black')
-            ax[0].set_ylabel('TraCE Score')
+            ax[0].set_ylabel('TraCE Score', fontsize=label_size)
             ax[0].set_xlim([0, len(desirable_cf_scores)])
             ax[0].set_ylim(-1, 1)
-            plt.tight_layout()
-            ax[0].legend(fancybox=True, framealpha=0.5)
-            #if oracle_desirable_cf:
+            # plt.tight_layout()
+            ax[0].legend(
+                # fancybox=True,
+                # framealpha=0.5,
+                frameon=False,
+                fontsize=label_size)
+            # if oracle_desirable_cf:
             #    plt.savefig(
             #        f'plots/plot_patient_{patient_scores_obtained}_{label}_TraCE_KDTree_oracle.pdf')
-            #else:
+            # else:
             #    plt.savefig(
             #        f'plots/plot_patient_{patient_scores_obtained}_{label}_TraCE_KDTree.pdf')
             # plt.show(block=False)
             # plt.close('all')
 
             # plot probabilities
+            ax[1].tick_params(axis='both', which='major', labelsize=label_size)
             ax[1].plot(nrfd_probs, label='NRFD', color='m')
             ax[1].plot(rfd_probs, label='RFD', color='blue')
             ax[1].plot(mortality_probs, label='Mortality', color='orange')
-            ax[1].set_xlabel('ICU Stay Timepoint')
-            ax[1].set_ylabel('Probability')
+            ax[1].set_xlabel('ICU Stay Timepoint', fontsize=label_size)
+            ax[1].set_ylabel('Probability', fontsize=label_size)
             ax[1].set_xlim([0, len(nrfd_probs)-1])
             ax[1].set_ylim(0, 1)
-            ax[1].legend(fancybox=True, framealpha=0.5)
-            plt.tight_layout()
+            ax[1].legend(
+                # fancybox=True,
+                # framealpha=0.5,
+                frameon=False,
+                fontsize=label_size)
+            # plt.tight_layout()
+            # plt.subplots_adjust(wspace=0, hspace=0.2 )
+
             plt.savefig(
                 f'plots/plot_patient_{patient_scores_obtained}_{label}_probs_stacked.pdf')
             plt.show(block=False)
