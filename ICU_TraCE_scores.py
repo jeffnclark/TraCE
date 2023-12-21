@@ -454,9 +454,9 @@ def calculate_TraCE_scores(
 
             # plot probabilities
             ax[1].tick_params(axis='both', which='major', labelsize=label_size)
-            ax[1].plot(nrfd_probs, label='NRFD', color='m')
-            ax[1].plot(rfd_probs, label='RFD', color='blue')
-            ax[1].plot(mortality_probs, label='Mortality', color='orange')
+            ax[1].plot(nrfd_probs, label=f'NRFD: {np.mean(nrfd_probs):.2f}', color='m')
+            ax[1].plot(rfd_probs, label=f'RFD: {np.mean(rfd_probs):.2f}', color='blue')
+            ax[1].plot(mortality_probs, label=f'Mortality: {np.mean(mortality_probs):.2f}', color='orange')
             ax[1].set_xlabel('ICU Stay Timepoint', fontsize=label_size)
             ax[1].set_ylabel('Probability', fontsize=label_size)
             ax[1].set_xlim([0, len(nrfd_probs)-1])
