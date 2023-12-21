@@ -1,5 +1,7 @@
 import pickle
 import warnings
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -417,44 +419,44 @@ def calculate_TraCE_scores(
             # to reflect TraCE method (measure timepoint and preceeding one)
             x_range = range(1, len(desirable_cf_scores) + 1)
             plt.style.use('seaborn-paper')
+            fig, ax = plt.subplots(2, sharex=True)
             plt.rcParams["axes.spines.right"] = False
             plt.rcParams["axes.spines.top"] = False
-            plt.plot(x_range, desirable_cf_scores,
+            ax[0].plot(x_range, desirable_cf_scores,
                      label=f'Desirable: {np.mean(desirable_cf_scores):.2f}')
-            plt.plot(x_range, undesirable_cf_scores,
+            ax[0].plot(x_range, undesirable_cf_scores,
                      label=f'Undesirable: {np.mean(undesirable_cf_scores):.2f} ')
-            plt.plot(x_range, score_values,
+            ax[0].plot(x_range, score_values,
                      label=f'Total TraCE: {np.mean(score_values):.2f}')
             # plt.xticks(x_range)
             # Add horizontal dashed line at 0
-            plt.axhline(0, linestyle='--', c='black')
-            plt.xlabel('ICU Stay Timepoint')
-            plt.ylabel('TraCE Score')
-            plt.xlim(0, len(desirable_cf_scores)+1)
-            plt.ylim(-1, 1)
+            ax[0].axhline(0, linestyle='--', c='black')
+            ax[0].set_ylabel('TraCE Score')
+            ax[0].set_xlim([0, len(desirable_cf_scores)])
+            ax[0].set_ylim(-1, 1)
             plt.tight_layout()
-            plt.legend()
-            if oracle_desirable_cf:
-                plt.savefig(
-                    f'plots/plot_patient_{patient_scores_obtained}_{label}_TraCE_KDTree_oracle.pdf')
-            else:
-                plt.savefig(
-                    f'plots/plot_patient_{patient_scores_obtained}_{label}_TraCE_KDTree.pdf')
-            plt.show(block=False)
-            plt.close('all')
+            ax[0].legend(fancybox=True, framealpha=0.5)
+            #if oracle_desirable_cf:
+            #    plt.savefig(
+            #        f'plots/plot_patient_{patient_scores_obtained}_{label}_TraCE_KDTree_oracle.pdf')
+            #else:
+            #    plt.savefig(
+            #        f'plots/plot_patient_{patient_scores_obtained}_{label}_TraCE_KDTree.pdf')
+            # plt.show(block=False)
+            # plt.close('all')
 
             # plot probabilities
-            plt.plot(nrfd_probs, label='NRFD', color='m')
-            plt.plot(rfd_probs, label='RFD', color='blue')
-            plt.plot(mortality_probs, label='Mortality', color='orange')
-            plt.xlabel('ICU Stay Timepoint')
-            plt.ylabel('Probability')
-            plt.xlim(0, len(nrfd_probs))
-            plt.ylim(0, 1)
-            plt.legend()
+            ax[1].plot(nrfd_probs, label='NRFD', color='m')
+            ax[1].plot(rfd_probs, label='RFD', color='blue')
+            ax[1].plot(mortality_probs, label='Mortality', color='orange')
+            ax[1].set_xlabel('ICU Stay Timepoint')
+            ax[1].set_ylabel('Probability')
+            ax[1].set_xlim([0, len(nrfd_probs)-1])
+            ax[1].set_ylim(0, 1)
+            ax[1].legend(fancybox=True, framealpha=0.5)
             plt.tight_layout()
             plt.savefig(
-                f'plots/plot_patient_{patient_scores_obtained}_{label}_probs.pdf')
+                f'plots/plot_patient_{patient_scores_obtained}_{label}_probs_stacked.pdf')
             plt.show(block=False)
             plt.close('all')
 
