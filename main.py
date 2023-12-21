@@ -155,7 +155,11 @@ fig, ax = plt.subplots(figsize=(10, 10))
 # ax = plot_dataset(ax, data2)
 ax = plot_decision_boundary(ax, X2, model2, alpha=0.75)
 
-ax.plot(factual2[:, 0], factual2[:, 1], 'ko-', label='true trajectory', linewidth=2)
+ax.plot(factual2[:, 0], factual2[:, 1], 'ko', linewidth=2, label='true trajectory')
+ax.annotate("", xy=(factual2[1, 0], factual2[1, 1]), xytext=(factual2[0, 0], factual2[0, 1]),
+                        arrowprops=dict(arrowstyle="->", lw=4, color='black', alpha=.7))
+ax.annotate("", xy=(factual2[2, 0], factual2[2, 1]), xytext=(factual2[1, 0], factual2[1, 1]),
+                        arrowprops=dict(arrowstyle="->", lw=4, color='black', alpha=.7))
 ax.set(aspect='equal')
 
 for i, fact in enumerate(factual2):
