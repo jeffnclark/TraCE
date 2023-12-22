@@ -4,10 +4,10 @@ This repository hosts source code, and case study implementation, for [TraCE as 
 
 ## TL;DR
 
-Use TraCE scores to assess progress in high-dimensionality multi-step processes down to an easily interpretable single score by measuring alignment in true trajectory against theoretical trajectories towards counterfactuals.
+Use TraCE scores to assess progress in high-dimensionality multi-step processes down to an easily interpretable single score by measuring alignment in true trajectory against theoretical trajectories towards counterfactuals:
 
 <p style="text-align:center">
-<img src="plots/fig1.png" width="450">
+<img src="plots/fig1_paper_method.png" width="800">
 </p>
 
 
